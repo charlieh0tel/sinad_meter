@@ -8,8 +8,8 @@ value as text.
 ![Image](images/running-on-pydwf-on-ad3.png)
 
 For acquisition the code supports:
-- bog standard audio capture devices via PortAudio
-- Digilent devices supproted via pydwf (but only AD3 is known to work)
+- bog-standard audio capture devices that PortAudio can talk to
+- Digilent devices supported by pydwf (but only AD3 is known to work)
 
 It has only been tested on Linux.  (It might work on Windoze; it might not.)
 
