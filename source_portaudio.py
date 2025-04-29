@@ -29,7 +29,7 @@ class PortAudioSource(source.Source):
         )
 
     def __init__(self, args):
-        self._num_samples =  round(args.sample_frequency * args.record_length)
+        self._num_samples = round(args.sample_frequency * args.record_length)
         self._stream = sounddevice.Stream(samplerate=args.sample_frequency,
                                           device=args.device)
         self._channel = 0
@@ -57,6 +57,7 @@ class PortAudioSource(source.Source):
     def __exit__(self, *_args):
         self.stop()
         self.close()
+
 
 #
 source.SOURCE_REGISTRY.register(PortAudioSource)

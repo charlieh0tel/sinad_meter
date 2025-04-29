@@ -43,7 +43,7 @@ class DigilentSource(source.Source):
         )
 
     def __init__(self, args):
-        self._num_samples =  round(args.sample_frequency * args.record_length)
+        self._num_samples = round(args.sample_frequency * args.record_length)
         self._dwf = DwfLibrary()
         self._device = openDwfDevice(
             self._dwf,
@@ -83,22 +83,24 @@ class DigilentSource(source.Source):
             total_samples_corrupted += current_samples_corrupted
 
             if current_samples_available != 0:
-                current_samples = self._analog_in.statusData(0, current_samples_available)
+                current_samples = self._analog_in.statusData(
+                    0, current_samples_available)
                 samples.append(current_samples)
 
             if status == DwfState.Done:
                 break
 
-
         if total_samples_lost > 0:
-            print(f"DigilentSource: {total_samples_lost} list samples in acquisition")
+            print(
+                f"DigilentSource: {total_samples_lost} list samples in acquisition")
         if total_samples_corrupted > 0:
-            print(f"DigilentSource: {total_samples_corrupted} corrupted samples in acquisition")
+            print(
+                f"DigilentSource: {total_samples_corrupted} corrupted samples in acquisition")
 
         samples = np.concatenate(samples)
         if len(samples) > self._num_samples:
             discard_count = len(samples) - self._num_samples
-            #print(f"discarding oldest {discard_count} samples out of {len(samples)}")
+            # print(f"discarding oldest {discard_count} samples out of {len(samples)}")
             samples = samples[discard_count:]
 
         return samples
