@@ -18,7 +18,7 @@ _NOISY = False
 mplstyle.use('fast')
 
 
-def run(source, sample_frequency, record_length):
+def run(source, sample_frequency, record_length, lpf_cutoff):
     num_samples = round(sample_frequency * record_length)
 
     acquisition_nr = 0
@@ -26,7 +26,11 @@ def run(source, sample_frequency, record_length):
     ch1_line = None
     sinad_line = None
     sinad_text = None
-    sinad_filter = filters.make_moving_average_filter(8)
+    sinad_filter = filters.make_moving_average_filter(4)
+
+    lpf = None
+    if lpf_cutoff:
+        lpf = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
 
     while True:
         acquisition_nr += 1
@@ -35,16 +39,20 @@ def run(source, sample_frequency, record_length):
 
         samples = source.read()
         assert len(samples) == num_samples
-        t = np.arange(len(samples)) / sample_frequency
 
+        if lpf:
+            samples = lpf(samples)
+
+        t = np.arange(len(samples)) / sample_frequency
+        
         (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
 
-        filtered_sinad = sinad_filter(sinad)
+        filtered_sinad = sinad_filter(np.array([sinad]))[0]
 
         suptitle_text = (
             f"{source.pretty_name} Acquisition # {acquisition_nr:5d}\n"
             f"{num_samples} samples ({record_length} seconds at {sample_frequency} Hz)")
-        filtered_sinad_text = f"SINAD={filtered_sinad:.3f} dB"
+        filtered_sinad_text = f"SINAD={filtered_sinad:.1f} dB"
 
         if fig is None:
             fig = plt.figure(figsize=(16, 8))
@@ -96,6 +104,10 @@ def main():
         action="store_true",
         dest="help_source",
         help="Prints usage related to selected source.")
+    parser.add_argument(
+        "-l", "--lpf",
+        type=float,
+        help=f"lowpass cutoff to apply in Hz (default: none)")
 
     (args, unparsed_args) = parser.parse_known_args()
 
@@ -123,7 +135,8 @@ def main():
     source_args = source_parser.parse_args(args=unparsed_args)
 
     with source_class(source_args) as source:
-        run(source, source_args.sample_frequency, source_args.record_length)
+        run(source, source_args.sample_frequency,
+            source_args.record_length, args.lpf)
 
 
 if __name__ == "__main__":
