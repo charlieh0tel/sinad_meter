@@ -47,8 +47,11 @@ class PortAudioSource(source.Source):
         samples = self._stream.read(self._num_samples)
         return samples[0][:, self._channel]
 
-    def data_range(self):
+    def sample_range(self):
         return (-0.5, 0.5)
+
+    def sample_unit(self):
+        return "AU"
 
     def __enter__(self):
         self.start()

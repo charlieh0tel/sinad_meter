@@ -16,6 +16,7 @@ class Source:
     def default_record_length():
         raise NotImplementedError("default_record_length is not implemented")
 
+
     @staticmethod
     def augment_parser(parser):
         pass
@@ -32,8 +33,11 @@ class Source:
     def read(self):
         raise NotImplementedError("read is not implemented")
 
-    def data_range(self):
-        raise NotImplementedError("read is not implemented")
+    def sample_range(self):
+        raise NotImplementedError("sample_range is not implemented")
+
+    def sample_unit(self):
+        raise NotImplementedError("sample_unit is not implemented")
 
     def __enter__(self):
         self.start()

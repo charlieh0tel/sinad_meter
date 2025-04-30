@@ -48,6 +48,26 @@ def make_fir_lowpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
     return FirFilter(taps)
 
 
+def make_fir_highpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
+    """
+    Makes a linear-phase FIR high-pass filter.
+
+    Args:
+        sample_frequency (int): The sampling rate of the audio data (Hz).
+        cutoff_frequency (float): The desired cutoff frequency (Hz).
+        numtaps (int): The number of taps (coefficients) in the filter.
+                       Must be odd.
+
+    Returns:
+        FirFilter: the filter
+    """
+    assert (numtaps % 2 != 0)
+    nyquist = sample_frequency / 2.
+    normalized_cutoff = cutoff_frequency / nyquist
+    taps = scipy.signal.firwin(numtaps, normalized_cutoff, pass_zero='highpass')
+    return FirFilter(taps)
+
+
 def make_fir_bandpass_filter(sample_frequency,
                              lowcut_frequency, highcut_frequency, numtaps=101):
     """

@@ -18,7 +18,7 @@ _NOISY = False
 mplstyle.use('fast')
 
 
-def run(source, sample_frequency, record_length, lpf_cutoff):
+def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
     num_samples = round(sample_frequency * record_length)
 
     acquisition_nr = 0
@@ -28,9 +28,13 @@ def run(source, sample_frequency, record_length, lpf_cutoff):
     sinad_text = None
     sinad_filter = filters.make_moving_average_filter(4)
 
-    lpf = None
-    if lpf_cutoff:
-        lpf = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
+    filter = None
+    if lpf_cutoff and hpf_cutoff:
+        filter = filters.make_fir_bandpass_filter(sample_frequency, lpf_cutoff, hpf_cutoff) 
+    elif lpf_cutoff:
+        filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
+    elif hpf_cutoff:
+        filter = filters.make_fir_highpass_filter(sample_frequency, hpf_cutoff)
 
     while True:
         acquisition_nr += 1
@@ -40,8 +44,8 @@ def run(source, sample_frequency, record_length, lpf_cutoff):
         samples = source.read()
         assert len(samples) == num_samples
 
-        if lpf:
-            samples = lpf(samples)
+        if filter:
+            samples = filter(samples)
 
         t = np.arange(len(samples)) / sample_frequency
         
@@ -60,11 +64,11 @@ def run(source, sample_frequency, record_length, lpf_cutoff):
             ch1_axis = fig.add_subplot(111)
             ch1_axis.grid()
             ch1_axis.set_xlabel("acquisition time [s]")
-            ch1_axis.set_ylabel("signal [V]")
+            ch1_axis.set_ylabel(f"signal [{source.sample_unit()}]")
             x_min = -0.05 * record_length
             x_max = 1.05 * record_length
             ch1_axis.set_xlim(x_min, x_max)
-            ch1_axis.set_ylim(*source.data_range())
+            ch1_axis.set_ylim(*source.sample_range())
             (ch1_line, ) = ch1_axis.plot(
                 t, samples, color='#346f9f', label="channel 1")
             sinad_axis = ch1_axis.twinx()
@@ -108,6 +112,10 @@ def main():
         "-l", "--lpf",
         type=float,
         help=f"lowpass cutoff to apply in Hz (default: none)")
+    parser.add_argument(
+        "-H", "--hpf",
+        type=float,
+        help=f"highpass cutoff to apply in Hz (default: none)")
 
     (args, unparsed_args) = parser.parse_known_args()
 
@@ -136,7 +144,7 @@ def main():
 
     with source_class(source_args) as source:
         run(source, source_args.sample_frequency,
-            source_args.record_length, args.lpf)
+            source_args.record_length, args.lpf, args.hpf)
 
 
 if __name__ == "__main__":

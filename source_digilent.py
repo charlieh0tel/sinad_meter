@@ -105,8 +105,11 @@ class DigilentSource(source.Source):
 
         return samples
 
-    def data_range(self):
+    def sample_range(self):
         return (-2.0, 2.0)
+
+    def sample_unit(self):
+        return "V"
 
     def __enter__(self):
         self.start()
