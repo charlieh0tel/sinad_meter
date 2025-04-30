@@ -8,8 +8,8 @@ import pysnr
 
 import filters
 import source as source_pkg
-import source_digilent
-import source_portaudio
+import source_digilent          # for effect
+import source_portaudio         # for effect
 
 
 _NOISY = False
@@ -26,7 +26,7 @@ def run(source, sample_frequency, record_length):
     ch1_line = None
     sinad_line = None
     sinad_text = None
-    sinad_filter = filters.MovingAverageFilter(8)
+    sinad_filter = filters.make_moving_average_filter(8)
 
     while True:
         acquisition_nr += 1
@@ -39,8 +39,7 @@ def run(source, sample_frequency, record_length):
 
         (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
 
-        sinad_filter.update(sinad)
-        filtered_sinad = sinad_filter()
+        filtered_sinad = sinad_filter(sinad)
 
         suptitle_text = (
             f"{source.pretty_name} Acquisition # {acquisition_nr:5d}\n"
