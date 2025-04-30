@@ -30,7 +30,8 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
     filter = None
     if lpf_cutoff and hpf_cutoff:
-        filter = filters.make_fir_bandpass_filter(sample_frequency, lpf_cutoff, hpf_cutoff) 
+        filter = filters.make_fir_bandpass_filter(
+            sample_frequency, lpf_cutoff, hpf_cutoff)
     elif lpf_cutoff:
         filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
     elif hpf_cutoff:
@@ -48,7 +49,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
             samples = filter(samples)
 
         t = np.arange(len(samples)) / sample_frequency
-        
+
         (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
 
         filtered_sinad = sinad_filter(np.array([sinad]))[0]

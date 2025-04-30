@@ -16,7 +16,6 @@ class Source:
     def default_record_length():
         raise NotImplementedError("default_record_length is not implemented")
 
-
     @staticmethod
     def augment_parser(parser):
         pass

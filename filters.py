@@ -64,7 +64,8 @@ def make_fir_highpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
     assert (numtaps % 2 != 0)
     nyquist = sample_frequency / 2.
     normalized_cutoff = cutoff_frequency / nyquist
-    taps = scipy.signal.firwin(numtaps, normalized_cutoff, pass_zero='highpass')
+    taps = scipy.signal.firwin(
+        numtaps, normalized_cutoff, pass_zero='highpass')
     return FirFilter(taps)
 
 
