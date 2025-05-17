@@ -26,7 +26,8 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
     ch1_line = None
     sinad_line = None
     sinad_text = None
-    sinad_filter = filters.make_moving_average_filter(4)
+    first_time = True
+    sinad_filter = filters.make_moving_average_filter(32)
 
     filter = None
     if lpf_cutoff and hpf_cutoff:
@@ -52,6 +53,10 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
         (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
 
+        if first_time:
+            first_time = False
+            sinad_filter(np.full(len(sinad_filter), sinad))
+
         filtered_sinad = sinad_filter(np.array([sinad]))[0]
 
         suptitle_text = (
@@ -75,7 +80,10 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
             sinad_axis = ch1_axis.twinx()
             sinad_axis.set_ylabel("SINDAD [dB]")
             sinad_axis.set_ylim(-15, 25)
-            sinad_line = sinad_axis.axhline(y=sinad, color='r')
+            sinad_line = sinad_axis.axhline(y=sinad, color='r', linestyle='--',
+                                            alpha=0.25)
+            filtered_sinad_line = sinad_axis.axhline(
+                y=filtered_sinad, color='r')
             sinad_text = sinad_axis.text(
                 x_min + 0.75 * (x_max - x_min), 22, filtered_sinad_text,
                 fontsize=20)
@@ -85,6 +93,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
             ch1_line.set_xdata(t)
             ch1_line.set_ydata(samples)
             sinad_line.set_ydata([sinad] * 2)
+            filtered_sinad_line.set_ydata([filtered_sinad] * 2)
             sinad_text.set_text(filtered_sinad_text)
 
         fig.canvas.draw()

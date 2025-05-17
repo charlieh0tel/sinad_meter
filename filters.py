@@ -13,6 +13,9 @@ class FirFilter:
         self._state = new_state
         return filtered_samples
 
+    def __len__(self):
+        return len(self._taps)
+
 
 def make_moving_average_filter(window_length):
     """
