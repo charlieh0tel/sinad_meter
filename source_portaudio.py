@@ -2,6 +2,8 @@
 # PortAudio audio source.
 #
 
+import sys
+
 import sounddevice
 
 import source
@@ -30,8 +32,21 @@ class PortAudioSource(source.Source):
 
     def __init__(self, args):
         self._num_samples = round(args.sample_frequency * args.record_length)
-        self._stream = sounddevice.Stream(samplerate=args.sample_frequency,
-                                          device=args.device)
+        try:
+            self._stream = sounddevice.Stream(samplerate=args.sample_frequency,
+                                              device=args.device)
+        except ValueError as e:
+            print(f"failed to open sound device: {e})", file=sys.stderr)
+            print("try:", file=sys.stderr)
+            for d in sounddevice.query_devices():
+                index = d['index']
+                name = d['name']
+                max_input_channels = d['max_input_channels']
+                if not max_input_channels:
+                    continue
+                print(f" {index:2} {name:40s} input_channels={max_input_channels}",
+                      file=sys.stderr)
+            raise
         self._channel = 0
 
     def start(self):
@@ -48,7 +63,7 @@ class PortAudioSource(source.Source):
         return samples[0][:, self._channel]
 
     def sample_range(self):
-        return (-0.5, 0.5)
+        return (-1., 1.)
 
     def sample_unit(self):
         return "AU"
