@@ -18,9 +18,9 @@ import source as source_pkg
 import source_digilent          # for effect
 import source_portaudio         # for effect
 
-
-# Gross.  For development.  DO NOT SUBMIT.
-sys.path.append("/home/ch/src/ee_stuff/instruments")
+import rs_smb100a
+import hp_8662a
+import keithley_2015
 
 DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE = "TCPIP::rssmb100a180609.local::INSTR"
 DEFAULT_HP_8663A_SIG_GEN_RESOURCE = "TCPIP::e5810a::gpib0,25::INSTR"
@@ -32,10 +32,10 @@ def run(source_class, source_args):
     hpf_cutoff = 4000.
 
     rm = pyvisa.ResourceManager('@py')
-    siggen_resource = rs_smb100a.RhodeSchwarzSMB100A(
-        rm, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE)
+    #siggen_resource = rs_smb100a.RhodeSchwarzSMB100A(
+    #    rm, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE)
 
-    # siggen_resource = hp_8662a.HP8663A(DEFAULT_HP_8663A_SIG_GEN_RESOURCE)
+    siggen_resource = hp_8662a.HP8663A(DEFAULT_HP_8663A_SIG_GEN_RESOURCE)
 
     keithley_meter = keithley_2015.Keithley2015(
         rm, DEFAULT_KEITHLEY_2015_RESOURCE).open()
