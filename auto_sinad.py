@@ -1,8 +1,5 @@
 #! /usr/bin/env python3
 
-import keithley_2015
-import rs_smb100a
-import hp_8662a
 import argparse
 import sys
 
