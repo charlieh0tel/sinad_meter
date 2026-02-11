@@ -12,8 +12,8 @@ SINAD subsquently increases): [Video](https://youtu.be/gy6IAjbTO2o)
 
 ## Performance
 
-The results match closely to a Keithley 2015 THD Multimeter, but the
-this soft meter has a better noise floor even with a cheap audio card.
+The results match closely to a Keithley 2015 THD Multimeter, but this
+soft meter has a better noise floor even with a cheap audio card.
 
 ![Image](data/sinad_tk981_sn30900133_hp8663a.png)
 ![Image](data/sinad_tk981_sn30900133_rssmb100a.png)
