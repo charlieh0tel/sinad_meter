@@ -7,7 +7,8 @@ value as text.
 ![Image](images/running-on-portaudio.png)
 ![Image](images/running-on-pydwf-on-ad3.png)
 
-Video (the synthesizer power ramps up during the video with the SINAD increases): [Video](https://youtu.be/gy6IAjbTO2o)
+Video (the synthesizer power ramps up power into receiver and the
+SINAD subsquently increases): [Video](https://youtu.be/gy6IAjbTO2o)
 
 For acquisition the code supports:
 - bog-standard audio capture devices that PortAudio can talk to
@@ -15,6 +16,8 @@ For acquisition the code supports:
 
 It has only been tested on Linux.  (It might work on Windoze; it might not.)
 
+The results match closely to a Keithley 2015 THD Multimeter.  This
+version has a better noise floor even with a cheap audio card.
 
 73 DE AI6KG<br />
 Christopher Hoover<br />
