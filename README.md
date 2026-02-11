@@ -18,6 +18,9 @@ soft meter has a better noise floor even with a cheap audio card.
 ![Image](data/sinad_tk981_sn30900133_hp8663a.png)
 ![Image](data/sinad_tk981_sn30900133_rssmb100a.png)
 
+Note that the plotting script annotates the graph with the standard
+12 dB SINAD point.
+
 ## Synthesizer Control
 
 If you have an HP8663A (or probably HP866[23][AB]) or an R&S SMB100A,
