@@ -10,14 +10,17 @@ value as text.
 Video (the synthesizer power ramps up power into receiver and the
 SINAD subsquently increases): [Video](https://youtu.be/gy6IAjbTO2o)
 
+The results match closely to a Keithley 2015 THD Multimeter, but the
+this soft meter has a better noise floor even with a cheap audio card.
+
+![Image](data/sinad_tk981_sn30900133_hp8663a.png)
+![Image](data/sinad_tk981_sn30900133_rssmb100a.png)
+
 For acquisition the code supports:
 - bog-standard audio capture devices that PortAudio can talk to
 - Digilent devices supported by pydwf (but only AD3 is known to work)
 
 It has only been tested on Linux.  (It might work on Windoze; it might not.)
-
-The results match closely to a Keithley 2015 THD Multimeter.  This
-version has a better noise floor even with a cheap audio card.
 
 73 DE AI6KG<br />
 Christopher Hoover<br />
