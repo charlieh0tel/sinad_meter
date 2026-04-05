@@ -1,1 +1,1 @@
-../ee_stuff/instruments/hp_8662a.py
+vendor/ee_stuff/instruments/hp_8662a.py
