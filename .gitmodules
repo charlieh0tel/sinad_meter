@@ -1,3 +1,3 @@
-[submodule "vendor/ee_stuff"]
-	path = vendor/ee_stuff
-	url = git@github.com:charlieh0tel/ee_stuff.git
+[submodule "instruments"]
+	path = instruments
+	url = git@github.com:charlieh0tel/ee-instruments.git

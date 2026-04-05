@@ -1,1 +1,1 @@
-vendor/ee_stuff/instruments/rs_smb100a.py
+instruments/rs_smb100a.py
