@@ -9,8 +9,7 @@ class Source:
 
     @staticmethod
     def default_sample_frequency():
-        raise NotImplementedError(
-            "default_sample_frequency is not implemented")
+        raise NotImplementedError("default_sample_frequency is not implemented")
 
     @staticmethod
     def default_record_length():
@@ -50,7 +49,7 @@ class Source:
 #
 #
 class SourceRegistry(registries.Registry[Type[Source]]):
-    lookup_attrs = ('name',)
+    lookup_attrs = ("name",)
 
 
 SOURCE_REGISTRY = SourceRegistry()

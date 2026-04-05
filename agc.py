@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.signal
 
 
 class AutomaticGainControl:
@@ -27,8 +26,12 @@ class AutomaticGainControl:
         Must be positive. Defaults to 1.0.
     """
 
-    def __init__(self, target_rms: float, smoothing_factor: float = 0.01,
-                 initial_gain: float = 1.0):
+    def __init__(
+        self,
+        target_rms: float,
+        smoothing_factor: float = 0.01,
+        initial_gain: float = 1.0,
+    ):
         if not 0.0 <= smoothing_factor <= 1.0:
             raise ValueError("smoothing_factor must be between 0 and 1.")
         if target_rms <= 0:
@@ -39,7 +42,7 @@ class AutomaticGainControl:
         self._target_rms = target_rms
         self._smoothing_factor = smoothing_factor
         self._current_gain = initial_gain
-        self._current_power_estimate = (target_rms / initial_gain)**2
+        self._current_power_estimate = (target_rms / initial_gain) ** 2
 
     def __call__(self, samples: np.ndarray) -> np.ndarray:
         """
@@ -65,8 +68,9 @@ class AutomaticGainControl:
 
         # Update the internal power estimate using exponential smoothing.
         self._current_power_estimate = (
-            self._smoothing_factor * current_batch_power +
-            (1 - self._smoothing_factor) * self._current_power_estimate)
+            self._smoothing_factor * current_batch_power
+            + (1 - self._smoothing_factor) * self._current_power_estimate
+        )
 
         # Calculate the required gain based on the smoothed power estimate
         # Ensure power estimate is non-zero before division and sqrt
@@ -77,15 +81,15 @@ class AutomaticGainControl:
         target_gain = self._target_rms / estimated_rms
 
         smoothed_gain = (
-            self._smoothing_factor * target_gain +
-            (1 - self._smoothing_factor) * self._current_gain
+            self._smoothing_factor * target_gain
+            + (1 - self._smoothing_factor) * self._current_gain
         )
 
         self._current_gain = smoothed_gain
         return samples * smoothed_gain
 
     def get_current_gain(self) -> float:
-        """ Returns the smoothed gain that was applied to the most
+        """Returns the smoothed gain that was applied to the most
         recently processed batch."""
         return self._current_gain
 

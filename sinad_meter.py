@@ -8,14 +8,12 @@ import pysnr
 
 import filters
 import source as source_pkg
-import source_digilent          # for effect
-import source_portaudio         # for effect
 
 
 _NOISY = False
 
 
-mplstyle.use('fast')
+mplstyle.use("fast")
 
 
 def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
@@ -32,7 +30,8 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
     filter = None
     if lpf_cutoff and hpf_cutoff:
         filter = filters.make_fir_bandpass_filter(
-            sample_frequency, lpf_cutoff, hpf_cutoff)
+            sample_frequency, lpf_cutoff, hpf_cutoff
+        )
     elif lpf_cutoff:
         filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
     elif hpf_cutoff:
@@ -61,7 +60,8 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
         suptitle_text = (
             f"{source.pretty_name} Acquisition # {acquisition_nr:5d}\n"
-            f"{num_samples} samples ({record_length} seconds at {sample_frequency} Hz)")
+            f"{num_samples} samples ({record_length} seconds at {sample_frequency} Hz)"
+        )
         filtered_sinad_text = f"SINAD={filtered_sinad:.1f} dB"
 
         if fig is None:
@@ -75,18 +75,17 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
             x_max = 1.05 * record_length
             ch1_axis.set_xlim(x_min, x_max)
             ch1_axis.set_ylim(*source.sample_range())
-            (ch1_line, ) = ch1_axis.plot(
-                t, samples, color='#346f9f', label="channel 1")
+            (ch1_line,) = ch1_axis.plot(t, samples, color="#346f9f", label="channel 1")
             sinad_axis = ch1_axis.twinx()
             sinad_axis.set_ylabel("SINDAD [dB]")
             sinad_axis.set_ylim(-15, 25)
-            sinad_line = sinad_axis.axhline(y=sinad, color='r', linestyle='--',
-                                            alpha=0.25)
-            filtered_sinad_line = sinad_axis.axhline(
-                y=filtered_sinad, color='r')
+            sinad_line = sinad_axis.axhline(
+                y=sinad, color="r", linestyle="--", alpha=0.25
+            )
+            filtered_sinad_line = sinad_axis.axhline(y=filtered_sinad, color="r")
             sinad_text = sinad_axis.text(
-                x_min + 0.75 * (x_max - x_min), 22, filtered_sinad_text,
-                fontsize=20)
+                x_min + 0.75 * (x_max - x_min), 22, filtered_sinad_text, fontsize=20
+            )
             fig.show()
         else:
             fig.suptitle(suptitle_text)
@@ -105,46 +104,54 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="SINAD Meter")
+    parser = argparse.ArgumentParser(description="SINAD Meter")
 
     parser.add_argument(
-        "-S", "--source",
+        "-S",
+        "--source",
         choices=[source.name for source in source_pkg.SOURCE_REGISTRY],
         default="portaudio",
-        help="Selects source.")
+        help="Selects source.",
+    )
     parser.add_argument(
         "--help-source",
         action="store_true",
         dest="help_source",
-        help="Prints usage related to selected source.")
+        help="Prints usage related to selected source.",
+    )
     parser.add_argument(
-        "-l", "--lpf",
-        type=float,
-        help=f"lowpass cutoff to apply in Hz (default: none)")
+        "-l", "--lpf", type=float, help="lowpass cutoff to apply in Hz (default: none)"
+    )
     parser.add_argument(
-        "-H", "--hpf",
+        "-H",
+        "--hpf",
         type=float,
-        help=f"highpass cutoff to apply in Hz (default: none)")
+        help="highpass cutoff to apply in Hz (default: none)",
+    )
 
     (args, unparsed_args) = parser.parse_known_args()
 
     source_class = source_pkg.SOURCE_REGISTRY.get(args.source)
     source_parser = argparse.ArgumentParser(
-        description=f"SINAD Meter using {source_class.pretty_name}")
+        description=f"SINAD Meter using {source_class.pretty_name}"
+    )
     default_sample_frequency = source_class.default_sample_frequency()
     source_parser.add_argument(
-        "-s", "--sample-frequency",
+        "-s",
+        "--sample-frequency",
         type=float,
         default=default_sample_frequency,
-        help=f"sample frequency, in samples per second (default: {default_sample_frequency} Hz)")
+        help=f"sample frequency, in samples per second (default: {default_sample_frequency} Hz)",
+    )
 
     default_record_length = source_class.default_record_length()
     source_parser.add_argument(
-        "-r", "--record-length",
+        "-r",
+        "--record-length",
         type=float,
         default=default_record_length,
-        help=f"record length, in seconds (default: {default_record_length} s)")
+        help=f"record length, in seconds (default: {default_record_length} s)",
+    )
 
     source_class.augment_argparse(source_parser)
     if args.help_source:
@@ -153,8 +160,13 @@ def main():
     source_args = source_parser.parse_args(args=unparsed_args)
 
     with source_class(source_args) as source:
-        run(source, source_args.sample_frequency,
-            source_args.record_length, args.lpf, args.hpf)
+        run(
+            source,
+            source_args.sample_frequency,
+            source_args.record_length,
+            args.lpf,
+            args.hpf,
+        )
 
 
 if __name__ == "__main__":

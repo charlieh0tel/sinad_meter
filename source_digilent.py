@@ -4,9 +4,15 @@
 
 import numpy as np
 
-from pydwf import (DwfLibrary, DwfEnumConfigInfo, DwfAnalogOutNode,
-                   DwfAnalogOutFunction, DwfAcquisitionMode, DwfState,
-                   DwfAnalogInFilter)
+from pydwf import (
+    DwfLibrary,
+    DwfEnumConfigInfo,
+    DwfAnalogOutNode,
+    DwfAnalogOutFunction,
+    DwfAcquisitionMode,
+    DwfState,
+    DwfAnalogInFilter,
+)
 from pydwf.utilities import openDwfDevice
 
 import source
@@ -27,19 +33,21 @@ class DigilentSource(source.Source):
     @staticmethod
     def augment_argparse(parser):
         parser.add_argument(
-            "-sn", "--serial-number-filter",
+            "-sn",
+            "--serial-number-filter",
             type=str,
-            nargs='?',
+            nargs="?",
             dest="serial_number_filter",
-            help="serial number filter to select a specific Digilent Waveforms device"
+            help="serial number filter to select a specific Digilent Waveforms device",
         )
         #
         # Useful hack.
         parser.add_argument(
-            "-o", "--enable-ch1-output",
+            "-o",
+            "--enable-ch1-output",
             action="store_true",
             dest="enable_ch1_out",
-            help="enable ch1 output"
+            help="enable ch1 output",
         )
 
     def __init__(self, args):
@@ -48,8 +56,8 @@ class DigilentSource(source.Source):
         self._device = openDwfDevice(
             self._dwf,
             serial_number_filter=args.serial_number_filter,
-            score_func=(
-                lambda param: param[DwfEnumConfigInfo.AnalogInBufferSize]))
+            score_func=(lambda param: param[DwfEnumConfigInfo.AnalogInBufferSize]),
+        )
         self._analog_in = self._device.analogIn
         self._analog_in.channelEnableSet(0, True)
         self._analog_in.channelFilterSet(0, DwfAnalogInFilter.Average)
@@ -59,12 +67,8 @@ class DigilentSource(source.Source):
         self._analog_in.recordLengthSet(args.record_length)
         if args.enable_ch1_out:
             _configure_analog_output(
-                self._device,
-                0,
-                frequency=100,
-                amplitude=1.,
-                offset=0.,
-                symmetry=0.25)
+                self._device, 0, frequency=100, amplitude=1.0, offset=0.0, symmetry=0.25
+            )
 
     def close(self):
         self._device.close()
@@ -77,25 +81,29 @@ class DigilentSource(source.Source):
         while True:
             status = self._analog_in.status(True)
 
-            (current_samples_available, current_samples_lost,
-             current_samples_corrupted) = self._analog_in.statusRecord()
+            (
+                current_samples_available,
+                current_samples_lost,
+                current_samples_corrupted,
+            ) = self._analog_in.statusRecord()
             total_samples_lost += current_samples_lost
             total_samples_corrupted += current_samples_corrupted
 
             if current_samples_available != 0:
                 current_samples = self._analog_in.statusData(
-                    0, current_samples_available)
+                    0, current_samples_available
+                )
                 samples.append(current_samples)
 
             if status == DwfState.Done:
                 break
 
         if total_samples_lost > 0:
-            print(
-                f"DigilentSource: {total_samples_lost} list samples in acquisition")
+            print(f"DigilentSource: {total_samples_lost} list samples in acquisition")
         if total_samples_corrupted > 0:
             print(
-                f"DigilentSource: {total_samples_corrupted} corrupted samples in acquisition")
+                f"DigilentSource: {total_samples_corrupted} corrupted samples in acquisition"
+            )
 
         samples = np.concatenate(samples)
         if len(samples) > self._num_samples:
@@ -120,8 +128,9 @@ class DigilentSource(source.Source):
         self.close()
 
 
-def _configure_analog_output(device, channel, frequency, amplitude,
-                             offset, symmetry=None):
+def _configure_analog_output(
+    device, channel, frequency, amplitude, offset, symmetry=None
+):
     analog_out = device.analogOut
     analog_out.reset(-1)  # Reset both channels.
 
@@ -133,7 +142,7 @@ def _configure_analog_output(device, channel, frequency, amplitude,
     if symmetry:
         analog_out.nodeSymmetrySet(channel, node, symmetry)
         analog_out.nodeOffsetSet(channel, node, offset)
-        analog_out.nodePhaseSet(channel, node, 0.)
+        analog_out.nodePhaseSet(channel, node, 0.0)
 
     analog_out.configure(channel, True)
 

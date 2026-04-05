@@ -24,28 +24,28 @@ class PortAudioSource(source.Source):
     @staticmethod
     def augment_argparse(parser):
         parser.add_argument(
-            "-d", "--device",
-            type=str,
-            required=True,
-            help="audio device to open"
+            "-d", "--device", type=str, required=True, help="audio device to open"
         )
 
     def __init__(self, args):
         self._num_samples = round(args.sample_frequency * args.record_length)
         try:
-            self._stream = sounddevice.Stream(samplerate=args.sample_frequency,
-                                              device=args.device)
+            self._stream = sounddevice.Stream(
+                samplerate=args.sample_frequency, device=args.device
+            )
         except ValueError as e:
             print(f"failed to open sound device: {e})", file=sys.stderr)
             print("try:", file=sys.stderr)
             for d in sounddevice.query_devices():
-                index = d['index']
-                name = d['name']
-                max_input_channels = d['max_input_channels']
+                index = d["index"]
+                name = d["name"]
+                max_input_channels = d["max_input_channels"]
                 if not max_input_channels:
                     continue
-                print(f" {index:2} {name:40s} input_channels={max_input_channels}",
-                      file=sys.stderr)
+                print(
+                    f" {index:2} {name:40s} input_channels={max_input_channels}",
+                    file=sys.stderr,
+                )
             raise
         self._channel = 0
 
@@ -63,7 +63,7 @@ class PortAudioSource(source.Source):
         return samples[0][:, self._channel]
 
     def sample_range(self):
-        return (-1., 1.)
+        return (-1.0, 1.0)
 
     def sample_unit(self):
         return "AU"

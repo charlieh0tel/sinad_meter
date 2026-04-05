@@ -4,18 +4,13 @@ import argparse
 import sys
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.style as mplstyle
 import pysnr
 import pandas as pd
 import pyvisa
 
 import filters
 import source as source_pkg
-import source_digilent          # for effect
-import source_portaudio         # for effect
 
-import rs_smb100a
 import hp_8662a
 import keithley_2015
 
@@ -25,17 +20,18 @@ DEFAULT_KEITHLEY_2015_RESOURCE = "TCPIP::e5810a::gpib0,22::INSTR"
 
 
 def run(source_class, source_args):
-    lpf_cutoff = 200.
-    hpf_cutoff = 4000.
+    lpf_cutoff = 200.0
+    hpf_cutoff = 4000.0
 
-    rm = pyvisa.ResourceManager('@py')
-    #siggen_resource = rs_smb100a.RhodeSchwarzSMB100A(
+    rm = pyvisa.ResourceManager("@py")
+    # siggen_resource = rs_smb100a.RhodeSchwarzSMB100A(
     #    rm, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE)
 
     siggen_resource = hp_8662a.HP8663A(DEFAULT_HP_8663A_SIG_GEN_RESOURCE)
 
     keithley_meter = keithley_2015.Keithley2015(
-        rm, DEFAULT_KEITHLEY_2015_RESOURCE).open()
+        rm, DEFAULT_KEITHLEY_2015_RESOURCE
+    ).open()
     keithley_meter.inst.timeout = 10e3
     keithley_meter.reset()
     keithley_meter.write(":SENS:FUNC 'dist'")
@@ -62,7 +58,8 @@ def run(source_class, source_args):
     filter = None
     if lpf_cutoff and hpf_cutoff:
         filter = filters.make_fir_bandpass_filter(
-            sample_frequency, lpf_cutoff, hpf_cutoff)
+            sample_frequency, lpf_cutoff, hpf_cutoff
+        )
     elif lpf_cutoff:
         filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
     elif hpf_cutoff:
@@ -90,86 +87,101 @@ def run(source_class, source_args):
                     if filter:
                         samples = filter(samples)
 
-                        t = np.arange(len(samples)) / sample_frequency
-
-                        (sinad, _) = pysnr.sinad_signal(samples,
-                                                        fs=sample_frequency)
+                        (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
 
                         sinad_dB_readings.append(sinad)
 
-                        keithley_sinad_dB = float(
-                            keithley_meter.query(":READ?"))
+                        keithley_sinad_dB = float(keithley_meter.query(":READ?"))
                         if keithley_sinad_dB > 1e6:
-                            keithely_sinad_dB = float('nan')
+                            keithley_sinad_dB = float("nan")
                         keithley_sinad_dB_readings.append(keithley_sinad_dB)
                         keithley_freq_Hz = float(
-                            keithley_meter.query(":SENS:DIST:FREQ?"))
+                            keithley_meter.query(":SENS:DIST:FREQ?")
+                        )
                         if keithley_freq_Hz > 1e6:
-                            keithley_freq_Hz = float('nan')
+                            keithley_freq_Hz = float("nan")
                         keithley_freq_Hz_readings.append(keithley_freq_Hz)
 
                 sinad_dB_readings = np.array(sinad_dB_readings)
                 sinad_mean_dB = sinad_dB_readings.mean()
                 sinad_std_dB = sinad_dB_readings.std()
-                keithley_sinad_dB_readings = np.array(
-                    keithley_sinad_dB_readings)
+                keithley_sinad_dB_readings = np.array(keithley_sinad_dB_readings)
                 keithley_sinad_mean_dB = keithley_sinad_dB_readings.mean()
                 keithley_sinad_std_dB = keithley_sinad_dB_readings.std()
                 keithley_freq_Hz_readings = np.array(keithley_freq_Hz_readings)
                 keithley_freq_mean_Hz = keithley_freq_Hz_readings.mean()
                 keithley_freq_std_Hz = keithley_freq_Hz_readings.std()
 
-                print(f" sinad={sinad_mean_dB:10.3f} dB std={
-                      sinad_std_dB:10.3f} dB", end="")
-                print(f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB keithley_std={
-                      keithley_sinad_std_dB:10.3f}", end="")
-                print(f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz keithley_std={
-                      keithley_freq_std_Hz:10.3f} Hz", end="")
+                print(
+                    f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
+                    end="",
+                )
+                print(
+                    f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB keithley_std={
+                        keithley_sinad_std_dB:10.3f}",
+                    end="",
+                )
+                print(
+                    f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz keithley_std={
+                        keithley_freq_std_Hz:10.3f} Hz",
+                    end="",
+                )
                 print()
-                data.append(dict(power_dBm=power_dBm,
-                                 sinad_mean_dB=sinad_mean_dB,
-                                 sinad_std_dB=sinad_std_dB,
-                                 keithley_sinad_mean_dB=keithley_sinad_mean_dB,
-                                 keithley_sinad_std_dB=keithley_sinad_std_dB,
-                                 keithley_freq_mean_Hz=keithley_freq_mean_Hz,
-                                 keithley_freq_std_Hz=keithley_freq_std_Hz))
+                data.append(
+                    dict(
+                        power_dBm=power_dBm,
+                        sinad_mean_dB=sinad_mean_dB,
+                        sinad_std_dB=sinad_std_dB,
+                        keithley_sinad_mean_dB=keithley_sinad_mean_dB,
+                        keithley_sinad_std_dB=keithley_sinad_std_dB,
+                        keithley_freq_mean_Hz=keithley_freq_mean_Hz,
+                        keithley_freq_std_Hz=keithley_freq_std_Hz,
+                    )
+                )
     df = pd.DataFrame(data)
     df.to_csv("auto_sinad.csv", index=False)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="SINAD Meter")
+    parser = argparse.ArgumentParser(description="SINAD Meter")
 
     parser.add_argument(
-        "-S", "--source",
+        "-S",
+        "--source",
         choices=[source.name for source in source_pkg.SOURCE_REGISTRY],
         default="portaudio",
-        help="Selects source.")
+        help="Selects source.",
+    )
     parser.add_argument(
         "--help-source",
         action="store_true",
         dest="help_source",
-        help="Prints usage related to selected source.")
+        help="Prints usage related to selected source.",
+    )
 
     (args, unparsed_args) = parser.parse_known_args()
 
     source_class = source_pkg.SOURCE_REGISTRY.get(args.source)
     source_parser = argparse.ArgumentParser(
-        description=f"SINAD Meter using {source_class.pretty_name}")
+        description=f"SINAD Meter using {source_class.pretty_name}"
+    )
     default_sample_frequency = source_class.default_sample_frequency()
     source_parser.add_argument(
-        "-s", "--sample-frequency",
+        "-s",
+        "--sample-frequency",
         type=float,
         default=default_sample_frequency,
-        help=f"sample frequency, in samples per second (default: {default_sample_frequency} Hz)")
+        help=f"sample frequency, in samples per second (default: {default_sample_frequency} Hz)",
+    )
 
     default_record_length = source_class.default_record_length()
     source_parser.add_argument(
-        "-r", "--record-length",
+        "-r",
+        "--record-length",
         type=float,
         default=default_record_length,
-        help=f"record length, in seconds (default: {default_record_length} s)")
+        help=f"record length, in seconds (default: {default_record_length} s)",
+    )
 
     source_class.augment_argparse(source_parser)
     if args.help_source:
