@@ -8,8 +8,8 @@ import matplotlib.style as mplstyle
 import numpy as np
 
 import filters
+import sinad as sinad_pkg
 import source as source_pkg
-from vendored import pysnr
 
 _NOISY = False
 
@@ -45,7 +45,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
         t = np.arange(len(samples)) / sample_frequency
 
-        (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
+        (sinad, _) = sinad_pkg.measure(samples, sample_frequency)
 
         if first_time:
             first_time = False
@@ -73,7 +73,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
             (ch1_line,) = ch1_axis.plot(t, samples, color="#346f9f", label="channel 1")
             sinad_axis = ch1_axis.twinx()
             sinad_axis.set_ylabel("SINDAD [dB]")
-            sinad_axis.set_ylim(-15, 25)
+            sinad_axis.set_ylim(0, 30)
             sinad_line = sinad_axis.axhline(
                 y=sinad, color="r", linestyle="--", alpha=0.25
             )

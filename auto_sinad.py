@@ -8,9 +8,9 @@ import pandas as pd
 import pyvisa
 
 import filters
+import sinad as sinad_pkg
 import source as source_pkg
 from instruments import hp_8662a, keithley_2015, rs_smb100a
-from vendored import pysnr
 
 DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE = "TCPIP::rssmb100a180609.local::INSTR"
 DEFAULT_HP_8663A_SIG_GEN_RESOURCE = "TCPIP::e5810a::gpib0,25::INSTR"
@@ -159,7 +159,7 @@ def run(
                                 audio_filter.reset()
                             samples = audio_filter(samples)
 
-                        (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
+                        (sinad, _) = sinad_pkg.measure(samples, sample_frequency)
                         sinad_dB_readings.append(sinad)
 
                         if keithley_meter is None:
