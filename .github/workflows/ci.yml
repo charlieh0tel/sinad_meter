@@ -14,7 +14,7 @@ jobs:
         # 3.11 is the declared floor; 3.13 is where the stdlib lost xdrlib,
         # which is what the standard-xdrlib marker in pyproject.toml covers.
         python-version: ["3.11", "3.12", "3.13"]
-    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
     with:
       python-version: ${{ matrix.python-version }}
       # sounddevice installs from PyPI but raises OSError at import unless the
