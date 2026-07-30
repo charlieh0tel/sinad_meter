@@ -204,22 +204,24 @@ def run(
                             f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
                             end="",
                         )
-                        discarded = len(keithley_sinad_dB_readings) - keithley_sinad_n
-                        if discarded:
-                            print(f" ({discarded} keithley readings discarded)", end="")
+                    # Invalid readings are dropped from the means, so say
+                    # so; the counts are not carried in the CSV.
+                    discarded = (len(sinad_dB_readings) - sinad_n) + (
+                        len(keithley_sinad_dB_readings) - keithley_sinad_n
+                    )
+                    if discarded:
+                        print(f" ({discarded} readings discarded)", end="")
                     print()
                     row = {
                         "power_dBm": power_dBm,
                         "sinad_mean_dB": sinad_mean_dB,
                         "sinad_std_dB": sinad_std_dB,
-                        "sinad_n": sinad_n,
                     }
                     if keithley_meter is not None:
                         row.update(
                             {
                                 "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
                                 "keithley_sinad_std_dB": keithley_sinad_std_dB,
-                                "keithley_sinad_n": keithley_sinad_n,
                                 "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
                                 "keithley_freq_std_Hz": keithley_freq_std_Hz,
                             }

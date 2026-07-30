@@ -22,13 +22,16 @@ def main(argv):
         label="AI6KG soft meter",
     )
 
-    plt.errorbar(
-        df["power_dBm"],
-        df["keithley_sinad_mean_dB"],
-        yerr=df["keithley_sinad_std_dB"],
-        fmt="+",
-        label="Keithley 2015",
-    )
+    # The Keithley is a check on the soft meter, not part of a sweep, so
+    # it is only present in files from a run with --keithley.
+    if "keithley_sinad_mean_dB" in df:
+        plt.errorbar(
+            df["power_dBm"],
+            df["keithley_sinad_mean_dB"],
+            yerr=df["keithley_sinad_std_dB"],
+            fmt="+",
+            label="Keithley 2015",
+        )
 
     interp_func = interp1d(df["sinad_mean_dB"], df["power_dBm"], kind="linear")
 
