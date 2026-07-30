@@ -3,7 +3,9 @@
 #
 
 import sys
+import threading
 
+import numpy as np
 import sounddevice
 
 import source
@@ -12,6 +14,11 @@ import source
 class PortAudioSource(source.Source):
     name: str = "portaudio"
     pretty_name: str = "PortAudio Source"
+    # A background callback drains the device continuously, but read()
+    # returns only the newest window and discards whatever piled up while
+    # the caller was busy, so consecutive reads are not one uninterrupted
+    # stream and stateful filtering must reset between them.
+    continuous: bool = False
 
     @staticmethod
     def default_sample_frequency():
@@ -29,12 +36,25 @@ class PortAudioSource(source.Source):
 
     def __init__(self, args):
         self._num_samples = round(args.sample_frequency * args.record_length)
+        self._channel = 0
+        # Guards _blocks / _available and signals read() when a fresh
+        # window has accumulated.
+        self._cond = threading.Condition()
+        self._blocks = []
+        self._available = 0
+        self._overflowed = False
         try:
             # InputStream, not Stream: Stream is duplex and a scalar
             # device applies to both halves, so a capture-only device
             # fails to open.
+            #
+            # A callback stream (rather than a blocking read) keeps the
+            # device drained even while the caller spends time rendering,
+            # which is what prevents the input buffer from overflowing.
             self._stream = sounddevice.InputStream(
-                samplerate=args.sample_frequency, device=args.device
+                samplerate=args.sample_frequency,
+                device=args.device,
+                callback=self._callback,
             )
         except ValueError as e:
             print(f"failed to open sound device: {e})", file=sys.stderr)
@@ -50,7 +70,16 @@ class PortAudioSource(source.Source):
                     file=sys.stderr,
                 )
             raise
-        self._channel = 0
+
+    def _callback(self, indata, _frames, _time, status):
+        # Runs on PortAudio's thread; indata is reused after we return, so
+        # copy the channel we keep.
+        with self._cond:
+            if status.input_overflow:
+                self._overflowed = True
+            self._blocks.append(indata[:, self._channel].copy())
+            self._available += len(indata)
+            self._cond.notify()
 
     def start(self):
         self._stream.start()
@@ -62,13 +91,24 @@ class PortAudioSource(source.Source):
         self._stream.close()
 
     def read(self):
-        (samples, overflowed) = self._stream.read(self._num_samples)
+        with self._cond:
+            self._cond.wait_for(lambda: self._available >= self._num_samples)
+            samples = np.concatenate(self._blocks)
+            overflowed = self._overflowed
+            # Drop everything: the next read starts fresh from live audio,
+            # so the backlog captured while the caller was busy is thrown
+            # away rather than played back late.
+            self._blocks = []
+            self._available = 0
+            self._overflowed = False
         if overflowed:
             print(
                 "PortAudioSource: input overflowed; samples were dropped",
                 file=sys.stderr,
             )
-        return samples[:, self._channel]
+        # The newest num_samples are one contiguous span; older backlog is
+        # discarded to stay live.
+        return samples[-self._num_samples :]
 
     def sample_range(self):
         return (-1.0, 1.0)
