@@ -12,7 +12,7 @@ SINAD subsquently increases): [Video](https://youtu.be/gy6IAjbTO2o)
 
 ## Performance
 
-The results match closely to a Keithley 2015 THD Multimeter.
+The results match reasonably to a Keithley 2015 THD Multimeter.
 
 ![Image](data/sinad_tk981_sn30900133_hp8663a.png)
 ![Image](data/sinad_tk981_sn30900133_rssmb100a.png)
