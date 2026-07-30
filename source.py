@@ -86,7 +86,10 @@ def load_sources():
     for module_name in _BACKEND_MODULES:
         try:
             importlib.import_module(module_name)
-        except ImportError as e:
+        except (ImportError, OSError) as e:
+            # OSError, not just ImportError: a backend's Python package
+            # can be installed while the shared library it binds to is
+            # not, which is how sounddevice reports a missing PortAudio.
             UNAVAILABLE_BACKENDS[module_name] = e
     return SOURCE_REGISTRY
 
