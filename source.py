@@ -65,7 +65,7 @@ SOURCE_REGISTRY = SourceRegistry()
 # them here keeps that in one place instead of relying on every script
 # to import backends it never names.
 #
-_BACKEND_MODULES = ("source_digilent", "source_portaudio")
+BACKEND_MODULES = ("source_digilent", "source_portaudio")
 
 # Backends whose import failed, as module name -> the ImportError.  A
 # missing backend is not fatal: pydwf is of no interest if you are
@@ -83,7 +83,7 @@ def load_sources():
     Returns:
         SourceRegistry: the populated registry
     """
-    for module_name in _BACKEND_MODULES:
+    for module_name in BACKEND_MODULES:
         try:
             importlib.import_module(module_name)
         except (ImportError, OSError) as e:

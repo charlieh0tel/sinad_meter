@@ -45,32 +45,9 @@ jobs:
     - name: Check formatting
       run: uv run ruff format --check .
 
-    # The scripts are __main__-guarded and the backends touch no hardware at
-    # import, so this runs no instrument I/O.  It is what catches a missing
-    # dependency, and -- via load_sources() -- a backend that fails to import.
+    # Includes an import of every module, which is what catches a missing
+    # dependency or a backend that stopped loading.
     - name: Test
-      run: uv run pytest -q
-
-    - name: Import every module
       env:
         MPLBACKEND: Agg
-      run: |
-        uv run python -c "
-        import importlib, pathlib
-        import source
-        # The backends go through load_sources(), which is forgiving by
-        # design, so importing them in the blanket loop would raise before
-        # the assert below could report which one failed and why.
-        names = sorted(
-            p.stem for p in pathlib.Path('.').glob('*.py')
-            if p.stem not in source._BACKEND_MODULES
-        )
-        for name in names:
-            importlib.import_module(name)
-            print(f'ok {name}')
-        registry = source.load_sources()
-        assert not source.UNAVAILABLE_BACKENDS, source.describe_unavailable_backends()
-        sources = [s.name for s in registry]
-        assert sources, 'no sources registered'
-        print(f'{len(names)} modules imported, sources: {sources}')
-        "
+      run: uv run pytest -q
