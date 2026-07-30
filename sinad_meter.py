@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 
 import argparse
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
@@ -8,8 +10,6 @@ import matplotlib.style as mplstyle
 import filters
 from vendored import pysnr
 import source as source_pkg
-import source_digilent          # for effect
-import source_portaudio         # for effect
 
 
 _NOISY = False
@@ -105,12 +105,16 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
 
 def main():
+    registry = source_pkg.load_sources()
+    for line in source_pkg.describe_unavailable_backends():
+        print(f"note: {line}", file=sys.stderr)
+
     parser = argparse.ArgumentParser(
         description="SINAD Meter")
 
     parser.add_argument(
         "-S", "--source",
-        choices=[source.name for source in source_pkg.SOURCE_REGISTRY],
+        choices=[source.name for source in registry],
         default="portaudio",
         help="Selects source.")
     parser.add_argument(
@@ -129,7 +133,7 @@ def main():
 
     (args, unparsed_args) = parser.parse_known_args()
 
-    source_class = source_pkg.SOURCE_REGISTRY.get(args.source)
+    source_class = registry.get(args.source)
     source_parser = argparse.ArgumentParser(
         description=f"SINAD Meter using {source_class.pretty_name}")
     default_sample_frequency = source_class.default_sample_frequency()

@@ -1,3 +1,4 @@
+import importlib
 from typing import Type
 
 import registries
@@ -54,3 +55,46 @@ class SourceRegistry(registries.Registry[Type[Source]]):
 
 
 SOURCE_REGISTRY = SourceRegistry()
+
+
+#
+# Each backend registers itself when imported, so the registry is only
+# as complete as the set of backends that have been imported.  Importing
+# them here keeps that in one place instead of relying on every script
+# to import backends it never names.
+#
+_BACKEND_MODULES = ('source_digilent', 'source_portaudio')
+
+# Backends whose import failed, as module name -> the ImportError.  A
+# missing backend is not fatal: pydwf is of no interest if you are
+# capturing through PortAudio, and vice versa.
+UNAVAILABLE_BACKENDS = {}
+
+
+def load_sources():
+    """
+    Imports the source backends, each of which registers itself.
+
+    Backends that cannot be imported are skipped and recorded in
+    UNAVAILABLE_BACKENDS.
+
+    Returns:
+        SourceRegistry: the populated registry
+    """
+    for module_name in _BACKEND_MODULES:
+        try:
+            importlib.import_module(module_name)
+        except ImportError as e:
+            UNAVAILABLE_BACKENDS[module_name] = e
+    return SOURCE_REGISTRY
+
+
+def describe_unavailable_backends():
+    """
+    Describes the backends that failed to import, for use in messages.
+
+    Returns:
+        list[str]: one line per unavailable backend, empty if all loaded
+    """
+    return [f"{module_name} is unavailable: {e}"
+            for module_name, e in sorted(UNAVAILABLE_BACKENDS.items())]
