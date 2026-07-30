@@ -51,6 +51,28 @@ def make_siggen(name, resource_manager, resource_name=None):
     return factory(resource_manager, resource_name or default_resource_name)
 
 
+def _summarize(readings):
+    """
+    Summarizes a set of readings, ignoring those that were invalid.
+
+    Out-of-range instrument responses are recorded as NaN, so a plain
+    mean would let one bad reading poison the whole set.
+
+    Args:
+        readings (list[float]): the readings, possibly containing NaN
+
+    Returns:
+        (float, float, int): mean, standard deviation, and how many
+                             readings were valid.  Mean and standard
+                             deviation are NaN if none were.
+    """
+    readings = np.asarray(readings, dtype=float)
+    valid = readings[~np.isnan(readings)]
+    if valid.size == 0:
+        return (float("nan"), float("nan"), 0)
+    return (valid.mean(), valid.std(), valid.size)
+
+
 def run(
     source_class,
     source_args,
@@ -59,8 +81,8 @@ def run(
     keithley_resource_name,
     output_path,
 ):
-    lpf_cutoff = 200.0
-    hpf_cutoff = 4000.0
+    hpf_cutoff = 200.0
+    lpf_cutoff = 4000.0
 
     rm = pyvisa.ResourceManager("@py")
     siggen_resource = make_siggen(siggen_name, rm, siggen_resource_name)
@@ -75,60 +97,55 @@ def run(
     keithley_meter.write(":SENS:DIST:SFIL NONE")  # CCITT?
     keithley_meter.write(":SENS:DIST:RANG:AUTO ON")
     keithley_meter.write(":UNIT:DIST DB")
-    assert lpf_cutoff is None or hpf_cutoff is None or lpf_cutoff < hpf_cutoff
-    if lpf_cutoff is not None:
-        assert lpf_cutoff >= 20
-        keithley_meter.write(f":SENS:DIST:LCO {int(lpf_cutoff)}")
-        keithley_meter.write(":SENS:DIST:LCO:STATE ON")
+    # LCO/HCO are the Keithley's low and high cutoffs, i.e. the passband
+    # edges, matching hpf_cutoff and lpf_cutoff respectively.
     if hpf_cutoff is not None:
-        assert hpf_cutoff <= 50_000
-        keithley_meter.write(f":SENS:DIST:HCO {int(hpf_cutoff)}")
+        assert hpf_cutoff >= 20
+        keithley_meter.write(f":SENS:DIST:LCO {int(hpf_cutoff)}")
+        keithley_meter.write(":SENS:DIST:LCO:STATE ON")
+    if lpf_cutoff is not None:
+        assert lpf_cutoff <= 50_000
+        keithley_meter.write(f":SENS:DIST:HCO {int(lpf_cutoff)}")
         keithley_meter.write(":SENS:DIST:HCO:STATE ON")
 
     sample_frequency = source_args.sample_frequency
     record_length = source_args.record_length
     num_samples = round(sample_frequency * record_length)
 
-    filter = None
-    if lpf_cutoff and hpf_cutoff:
-        filter = filters.make_fir_bandpass_filter(
-            sample_frequency, lpf_cutoff, hpf_cutoff
-        )
-    elif lpf_cutoff:
-        filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
-    elif hpf_cutoff:
-        filter = filters.make_fir_highpass_filter(sample_frequency, hpf_cutoff)
+    audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
 
     data = []
 
     with siggen_resource as siggen:
-        siggen.set_output(False)
-        for power_dBm in np.linspace(-125, -95, 51):
-            print(f"{power_dBm:6.3f}", end="")
-            sys.stdout.flush()
+        try:
+            for power_dBm in np.linspace(-125, -95, 51):
+                print(f"{power_dBm:6.3f}", end="")
+                sys.stdout.flush()
 
-            siggen.set_power(power_dBm)
-            siggen.set_output(True)
+                siggen.set_power(power_dBm)
+                siggen.set_output(True)
 
-            with source_class(source_args) as source:
-                sinad_dB_readings = []
-                keithley_sinad_dB_readings = []
-                keithley_freq_Hz_readings = []
-                for _ in range(128):
-                    samples = source.read()
-                    assert len(samples) == num_samples
+                with source_class(source_args) as source:
+                    sinad_dB_readings = []
+                    keithley_sinad_dB_readings = []
+                    keithley_freq_Hz_readings = []
+                    for _ in range(128):
+                        samples = source.read()
+                        assert len(samples) == num_samples
 
-                    if filter:
-                        samples = filter(samples)
+                        if audio_filter:
+                            if not source.continuous:
+                                audio_filter.reset()
+                            samples = audio_filter(samples)
 
                         (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
-
                         sinad_dB_readings.append(sinad)
 
                         keithley_sinad_dB = float(keithley_meter.query(":READ?"))
                         if keithley_sinad_dB > 1e6:
                             keithley_sinad_dB = float("nan")
                         keithley_sinad_dB_readings.append(keithley_sinad_dB)
+
                         keithley_freq_Hz = float(
                             keithley_meter.query(":SENS:DIST:FREQ?")
                         )
@@ -136,42 +153,52 @@ def run(
                             keithley_freq_Hz = float("nan")
                         keithley_freq_Hz_readings.append(keithley_freq_Hz)
 
-                sinad_dB_readings = np.array(sinad_dB_readings)
-                sinad_mean_dB = sinad_dB_readings.mean()
-                sinad_std_dB = sinad_dB_readings.std()
-                keithley_sinad_dB_readings = np.array(keithley_sinad_dB_readings)
-                keithley_sinad_mean_dB = keithley_sinad_dB_readings.mean()
-                keithley_sinad_std_dB = keithley_sinad_dB_readings.std()
-                keithley_freq_Hz_readings = np.array(keithley_freq_Hz_readings)
-                keithley_freq_mean_Hz = keithley_freq_Hz_readings.mean()
-                keithley_freq_std_Hz = keithley_freq_Hz_readings.std()
+                    (sinad_mean_dB, sinad_std_dB, sinad_n) = _summarize(
+                        sinad_dB_readings
+                    )
+                    (
+                        keithley_sinad_mean_dB,
+                        keithley_sinad_std_dB,
+                        keithley_sinad_n,
+                    ) = _summarize(keithley_sinad_dB_readings)
+                    (keithley_freq_mean_Hz, keithley_freq_std_Hz, _) = _summarize(
+                        keithley_freq_Hz_readings
+                    )
 
-                print(
-                    f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
-                    end="",
-                )
-                print(
-                    f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
-                    f" keithley_std={keithley_sinad_std_dB:10.3f}",
-                    end="",
-                )
-                print(
-                    f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
-                    f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
-                    end="",
-                )
-                print()
-                data.append(
-                    {
-                        "power_dBm": power_dBm,
-                        "sinad_mean_dB": sinad_mean_dB,
-                        "sinad_std_dB": sinad_std_dB,
-                        "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
-                        "keithley_sinad_std_dB": keithley_sinad_std_dB,
-                        "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
-                        "keithley_freq_std_Hz": keithley_freq_std_Hz,
-                    }
-                )
+                    print(
+                        f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
+                        end="",
+                    )
+                    print(
+                        f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
+                        f" keithley_std={keithley_sinad_std_dB:10.3f}",
+                        end="",
+                    )
+                    print(
+                        f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
+                        f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
+                        end="",
+                    )
+                    if keithley_sinad_n != len(keithley_sinad_dB_readings):
+                        discarded = len(keithley_sinad_dB_readings) - keithley_sinad_n
+                        print(f" ({discarded} keithley readings discarded)", end="")
+                    print()
+                    data.append(
+                        {
+                            "power_dBm": power_dBm,
+                            "sinad_mean_dB": sinad_mean_dB,
+                            "sinad_std_dB": sinad_std_dB,
+                            "sinad_n": sinad_n,
+                            "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
+                            "keithley_sinad_std_dB": keithley_sinad_std_dB,
+                            "keithley_sinad_n": keithley_sinad_n,
+                            "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
+                            "keithley_freq_std_Hz": keithley_freq_std_Hz,
+                        }
+                    )
+        finally:
+            # Never leave the generator transmitting, however we leave.
+            siggen.set_output(False)
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
     print(f"wrote {output_path}")
@@ -218,7 +245,7 @@ def main():
         f"(default: {DEFAULT_KEITHLEY_2015_RESOURCE})",
     )
     parser.add_argument(
-        "-o", "--output", help="CSV to write (default: auto_sinad_<siggen>.csv)"
+        "--output", help="CSV to write (default: auto_sinad_<siggen>.csv)"
     )
 
     (args, unparsed_args) = parser.parse_known_args()

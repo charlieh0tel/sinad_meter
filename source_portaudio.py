@@ -30,7 +30,10 @@ class PortAudioSource(source.Source):
     def __init__(self, args):
         self._num_samples = round(args.sample_frequency * args.record_length)
         try:
-            self._stream = sounddevice.Stream(
+            # InputStream, not Stream: Stream is duplex and a scalar
+            # device applies to both halves, so a capture-only device
+            # fails to open.
+            self._stream = sounddevice.InputStream(
                 samplerate=args.sample_frequency, device=args.device
             )
         except ValueError as e:
@@ -59,8 +62,13 @@ class PortAudioSource(source.Source):
         self._stream.close()
 
     def read(self):
-        samples = self._stream.read(self._num_samples)
-        return samples[0][:, self._channel]
+        (samples, overflowed) = self._stream.read(self._num_samples)
+        if overflowed:
+            print(
+                "PortAudioSource: input overflowed; samples were dropped",
+                file=sys.stderr,
+            )
+        return samples[:, self._channel]
 
     def sample_range(self):
         return (-1.0, 1.0)

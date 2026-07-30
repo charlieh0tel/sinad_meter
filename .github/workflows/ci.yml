@@ -48,13 +48,20 @@ jobs:
       run: |
         uv run python -c "
         import importlib, pathlib
-        mods = sorted(p.stem for p in pathlib.Path('.').glob('*.py'))
-        for m in mods:
-            importlib.import_module(m)
-            print(f'ok {m}')
         import source
-        assert not source.UNAVAILABLE_BACKENDS, source.UNAVAILABLE_BACKENDS
-        assert [s.name for s in source.load_sources()], 'no sources registered'
-        print(f'{len(mods)} modules imported, sources:',
-              [s.name for s in source.SOURCE_REGISTRY])
+        # The backends go through load_sources(), which is forgiving by
+        # design, so importing them in the blanket loop would raise before
+        # the assert below could report which one failed and why.
+        names = sorted(
+            p.stem for p in pathlib.Path('.').glob('*.py')
+            if p.stem not in source._BACKEND_MODULES
+        )
+        for name in names:
+            importlib.import_module(name)
+            print(f'ok {name}')
+        registry = source.load_sources()
+        assert not source.UNAVAILABLE_BACKENDS, source.describe_unavailable_backends()
+        sources = [s.name for s in registry]
+        assert sources, 'no sources registered'
+        print(f'{len(names)} modules imported, sources: {sources}')
         "

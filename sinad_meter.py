@@ -28,15 +28,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
     first_time = True
     sinad_filter = filters.make_moving_average_filter(32)
 
-    filter = None
-    if lpf_cutoff and hpf_cutoff:
-        filter = filters.make_fir_bandpass_filter(
-            sample_frequency, lpf_cutoff, hpf_cutoff
-        )
-    elif lpf_cutoff:
-        filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
-    elif hpf_cutoff:
-        filter = filters.make_fir_highpass_filter(sample_frequency, hpf_cutoff)
+    audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
 
     while True:
         acquisition_nr += 1
@@ -46,8 +38,10 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
         samples = source.read()
         assert len(samples) == num_samples
 
-        if filter:
-            samples = filter(samples)
+        if audio_filter:
+            if not source.continuous:
+                audio_filter.reset()
+            samples = audio_filter(samples)
 
         t = np.arange(len(samples)) / sample_frequency
 

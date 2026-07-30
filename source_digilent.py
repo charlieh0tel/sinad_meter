@@ -20,6 +20,9 @@ import source
 class DigilentSource(source.Source):
     name: str = "digilent"
     pretty_name: str = "Digilent DWF Source"
+    # Each read() is a separate record acquisition with a gap before the
+    # next, not a continuous stream.
+    continuous: bool = False
 
     @staticmethod
     def default_sample_frequency():

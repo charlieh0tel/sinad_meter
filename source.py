@@ -15,8 +15,14 @@ class Source:
     def default_record_length():
         raise NotImplementedError("default_record_length is not implemented")
 
+    # Whether read() returns consecutive samples of one uninterrupted
+    # stream.  Record-based backends return an independent capture each
+    # call, with a gap in between, so stateful filtering must not carry
+    # across reads.
+    continuous: bool = True
+
     @staticmethod
-    def augment_parser(parser):
+    def augment_argparse(parser):
         pass
 
     def start(self):
