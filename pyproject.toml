@@ -1,0 +1,20 @@
+[project]
+name = "sinad-meter"
+version = "0.1.0"
+description = "A software SINAD meter"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pydwf",
+    "pyvisa",
+    "registries",
+    "scipy",
+    "sounddevice",
+]
+
+[tool.uv]
+package = false

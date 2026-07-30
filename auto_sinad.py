@@ -6,11 +6,11 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
-import pysnr
 import pandas as pd
 import pyvisa
 
 import filters
+from vendored import pysnr
 import source as source_pkg
 import source_digilent          # for effect
 import source_portaudio         # for effect

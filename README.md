@@ -13,6 +13,17 @@ For acquisition the code supports:
 
 It has only been tested on Linux.  (It might work on Windoze; it might not.)
 
+## Running
+
+Dependencies are managed with [uv](https://docs.astral.sh/uv/).  The
+environment is created on demand, so there is nothing to install first:
+
+```
+uv run ./sinad_meter.py
+```
+
+`uv run` works for the other scripts here too, e.g. `uv run ./auto_sinad.py`.
+
 
 73 DE AI6KG<br />
 Christopher Hoover<br />
