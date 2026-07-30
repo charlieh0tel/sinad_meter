@@ -14,6 +14,16 @@ class FirFilter:
         self._state = new_state
         return filtered_samples
 
+    def reset(self):
+        """
+        Clears the delay line.
+
+        Call this between captures that are not consecutive samples of
+        one stream, so that a record does not begin with the tail of an
+        unrelated one.
+        """
+        self._state = np.zeros(len(self._taps) - 1)
+
     def __len__(self):
         return len(self._taps)
 
@@ -96,3 +106,37 @@ def make_fir_bandpass_filter(
         numtaps, [normalized_lowcut, normalized_highcut], pass_zero="bandpass"
     )
     return FirFilter(taps)
+
+
+def make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff, numtaps=101):
+    """
+    Makes the filter implied by a pair of optional cutoffs.
+
+    The cutoffs are named for the filter each one alone would produce, so
+    hpf_cutoff is the lower edge of the passband and lpf_cutoff the
+    upper.  Both together give a bandpass; one gives that one filter;
+    neither gives no filter.
+
+    Args:
+        sample_frequency (float): sample rate of the signal (Hz)
+        hpf_cutoff (float): highpass cutoff (Hz), or None
+        lpf_cutoff (float): lowpass cutoff (Hz), or None
+        numtaps (int): number of taps.  Must be odd.
+
+    Returns:
+        FirFilter: the filter, or None if both cutoffs are None
+    """
+    if hpf_cutoff is not None and lpf_cutoff is not None:
+        if hpf_cutoff >= lpf_cutoff:
+            raise ValueError(
+                f"highpass cutoff ({hpf_cutoff} Hz) must be below the "
+                f"lowpass cutoff ({lpf_cutoff} Hz)"
+            )
+        return make_fir_bandpass_filter(
+            sample_frequency, hpf_cutoff, lpf_cutoff, numtaps
+        )
+    if lpf_cutoff is not None:
+        return make_fir_lowpass_filter(sample_frequency, lpf_cutoff, numtaps)
+    if hpf_cutoff is not None:
+        return make_fir_highpass_filter(sample_frequency, hpf_cutoff, numtaps)
+    return None

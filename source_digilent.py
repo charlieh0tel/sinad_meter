@@ -3,15 +3,14 @@
 #
 
 import numpy as np
-
 from pydwf import (
-    DwfLibrary,
-    DwfEnumConfigInfo,
-    DwfAnalogOutNode,
-    DwfAnalogOutFunction,
     DwfAcquisitionMode,
-    DwfState,
     DwfAnalogInFilter,
+    DwfAnalogOutFunction,
+    DwfAnalogOutNode,
+    DwfEnumConfigInfo,
+    DwfLibrary,
+    DwfState,
 )
 from pydwf.utilities import openDwfDevice
 
@@ -21,6 +20,9 @@ import source
 class DigilentSource(source.Source):
     name: str = "digilent"
     pretty_name: str = "Digilent DWF Source"
+    # Each read() is a separate record acquisition with a gap before the
+    # next, not a continuous stream.
+    continuous: bool = False
 
     @staticmethod
     def default_sample_frequency():
@@ -102,7 +104,8 @@ class DigilentSource(source.Source):
             print(f"DigilentSource: {total_samples_lost} list samples in acquisition")
         if total_samples_corrupted > 0:
             print(
-                f"DigilentSource: {total_samples_corrupted} corrupted samples in acquisition"
+                f"DigilentSource: {total_samples_corrupted} corrupted "
+                "samples in acquisition"
             )
 
         samples = np.concatenate(samples)
@@ -147,5 +150,4 @@ def _configure_analog_output(
     analog_out.configure(channel, True)
 
 
-#
 source.SOURCE_REGISTRY.register(DigilentSource)

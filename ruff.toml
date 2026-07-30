@@ -1,1 +1,48 @@
-extend-exclude = ["instruments"]
+# Kept in sync with ee-instruments/ruff.toml -- same rule set, same
+# rationale.  target-version must be set explicitly: ruff only infers it
+# from project.requires-python when the config lives in pyproject.toml
+# itself, not from a standalone ruff.toml.
+target-version = "py311"
+line-length = 88
+
+# vendored/pysnr is kept close to upstream so that local changes read as
+# a diff against it.  instruments is the ee-instruments submodule, which
+# is linted by its own CI.
+extend-exclude = [
+    "instruments",
+    "vendored",
+]
+
+[lint]
+# Selected explicitly rather than relying on ruff's defaults, so a ruff upgrade
+# changes the enforced rule set only when this list changes.
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # import sorting
+    "UP",    # pyupgrade
+    "B",     # bugbear
+    "C4",    # comprehensions
+    "SIM",   # simplify
+    "PIE",   # misc lints
+    "PERF",  # perflint
+    "DTZ",   # naive datetimes
+    "EXE",   # shebang/executable-bit consistency
+    "ISC",   # implicit str concat
+    "FA",    # future annotations
+    "FLY",   # static str join
+    "G",     # logging format
+    "LOG",   # logging misuse
+    "BLE",   # blind except
+    "PLC",   # pylint conventions
+    "PLE",   # pylint errors
+]
+
+# Deliberately not selected, following ee-instruments:
+#   N      -- pep8-naming rejects the dB/Hz unit spellings used throughout
+#             (sinad_mean_dB, keithley_freq_Hz).  The names follow the
+#             instrument manuals and the quantities they carry.
+#   PLR    -- PLR2004 (magic value in comparison) fires on the numeric
+#             constants that are the substance of signal-processing code.
+#   T20    -- these are CLI scripts; print() is their output.

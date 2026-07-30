@@ -8,6 +8,66 @@ on:
 
 jobs:
   ci:
-    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
-    with:
-      test-command: ""
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the declared floor; 3.13 is where the stdlib lost xdrlib,
+        # which is what the standard-xdrlib marker in pyproject.toml covers.
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+
+    - name: Install uv
+      # Exact tag, not a floating major: setup-uv publishes moving major tags
+      # only up to v7, so `@v9` does not resolve even though v9.0.0 is current.
+      uses: astral-sh/setup-uv@v9.0.0
+      with:
+        enable-cache: true
+        python-version: ${{ matrix.python-version }}
+
+    # sounddevice binds to the PortAudio shared library, which the
+    # runner image does not carry; without it the PortAudio backend
+    # cannot load and the smoke test below has nothing to check.
+    - name: Install PortAudio
+      run: sudo apt-get update && sudo apt-get install -y libportaudio2
+
+    - name: Install dependencies
+      run: uv sync --locked
+
+    - name: Lint
+      run: uv run ruff check .
+
+    - name: Check formatting
+      run: uv run ruff format --check .
+
+    # The scripts are __main__-guarded and the backends touch no hardware at
+    # import, so this runs no instrument I/O.  It is what catches a missing
+    # dependency, and -- via load_sources() -- a backend that fails to import.
+    - name: Import every module
+      env:
+        MPLBACKEND: Agg
+      run: |
+        uv run python -c "
+        import importlib, pathlib
+        import source
+        # The backends go through load_sources(), which is forgiving by
+        # design, so importing them in the blanket loop would raise before
+        # the assert below could report which one failed and why.
+        names = sorted(
+            p.stem for p in pathlib.Path('.').glob('*.py')
+            if p.stem not in source._BACKEND_MODULES
+        )
+        for name in names:
+            importlib.import_module(name)
+            print(f'ok {name}')
+        registry = source.load_sources()
+        assert not source.UNAVAILABLE_BACKENDS, source.describe_unavailable_backends()
+        sources = [s.name for s in registry]
+        assert sources, 'no sources registered'
+        print(f'{len(names)} modules imported, sources: {sources}')
+        "

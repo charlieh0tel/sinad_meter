@@ -1,14 +1,15 @@
 #! /usr/bin/env python3
 
 import argparse
-import numpy as np
+import sys
+
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
-import pysnr
+import numpy as np
 
 import filters
 import source as source_pkg
-
+from vendored import pysnr
 
 _NOISY = False
 
@@ -27,15 +28,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
     first_time = True
     sinad_filter = filters.make_moving_average_filter(32)
 
-    filter = None
-    if lpf_cutoff and hpf_cutoff:
-        filter = filters.make_fir_bandpass_filter(
-            sample_frequency, lpf_cutoff, hpf_cutoff
-        )
-    elif lpf_cutoff:
-        filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
-    elif hpf_cutoff:
-        filter = filters.make_fir_highpass_filter(sample_frequency, hpf_cutoff)
+    audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
 
     while True:
         acquisition_nr += 1
@@ -45,8 +38,10 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
         samples = source.read()
         assert len(samples) == num_samples
 
-        if filter:
-            samples = filter(samples)
+        if audio_filter:
+            if not source.continuous:
+                audio_filter.reset()
+            samples = audio_filter(samples)
 
         t = np.arange(len(samples)) / sample_frequency
 
@@ -104,12 +99,16 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
 
 def main():
+    registry = source_pkg.load_sources()
+    for line in source_pkg.describe_unavailable_backends():
+        print(f"note: {line}", file=sys.stderr)
+
     parser = argparse.ArgumentParser(description="SINAD Meter")
 
     parser.add_argument(
         "-S",
         "--source",
-        choices=[source.name for source in source_pkg.SOURCE_REGISTRY],
+        choices=[source.name for source in registry],
         default="portaudio",
         help="Selects source.",
     )
@@ -123,15 +122,12 @@ def main():
         "-l", "--lpf", type=float, help="lowpass cutoff to apply in Hz (default: none)"
     )
     parser.add_argument(
-        "-H",
-        "--hpf",
-        type=float,
-        help="highpass cutoff to apply in Hz (default: none)",
+        "-H", "--hpf", type=float, help="highpass cutoff to apply in Hz (default: none)"
     )
 
     (args, unparsed_args) = parser.parse_known_args()
 
-    source_class = source_pkg.SOURCE_REGISTRY.get(args.source)
+    source_class = registry.get(args.source)
     source_parser = argparse.ArgumentParser(
         description=f"SINAD Meter using {source_class.pretty_name}"
     )
@@ -141,7 +137,8 @@ def main():
         "--sample-frequency",
         type=float,
         default=default_sample_frequency,
-        help=f"sample frequency, in samples per second (default: {default_sample_frequency} Hz)",
+        help="sample frequency, in samples per second "
+        f"(default: {default_sample_frequency} Hz)",
     )
 
     default_record_length = source_class.default_record_length()

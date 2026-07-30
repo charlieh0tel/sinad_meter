@@ -34,6 +34,26 @@ For acquisition the code supports:
 - Digilent devices supported by pydwf (but only AD3 is known to work)
 
 
+## Running
+
+Dependencies are managed with [uv](https://docs.astral.sh/uv/).  The
+instrument drivers come from a submodule, so clone recursively:
+
+```
+git clone --recurse-submodules https://github.com/charlieh0tel/sinad_meter.git
+```
+
+(For an existing clone, `git submodule update --init`.)
+
+The environment is created on demand, so there is nothing to install
+first:
+
+```
+uv run ./sinad_meter.py
+```
+
+`uv run` works for the other scripts here too, e.g. `uv run ./auto_sinad.py`.
+
 It has only been tested on Linux.  (It might work on Windoze; it might not.)
 
 73 DE AI6KG<br />
