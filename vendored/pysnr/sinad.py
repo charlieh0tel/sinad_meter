@@ -1,6 +1,6 @@
 import numpy as np
-from pysnr.utils import mag2db, _remove_dc_component, bandpower, periodogram, _get_tone_indices_from_psd
-from pysnr.utils import _check_type_and_shape
+from .utils import mag2db, _remove_dc_component, bandpower, periodogram, _get_tone_indices_from_psd
+from .utils import _check_type_and_shape
 
 
 def sinad_signal(signal, fs=1.0):
@@ -59,7 +59,8 @@ def sinad_power_spectral_density(pxx, frequencies):
     if len(f) != len(pxx):
         raise AssertionError("Power Spectral Density data and Frequency List must be of same length")
 
-    origPxx = np.copy(pxx)
+    origPxx = pxx
+    pxx = np.copy(pxx)
 
     # Remove DC component
     pxx[0] = 2 * pxx[0]

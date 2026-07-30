@@ -162,7 +162,11 @@ def mag2db(data, scaling=10):
     float or numpy ndarray
         The converted items
     """
-    return scaling * np.log10(data, where=(data != 0))
+    # Upstream passes where=(data != 0) without an out=, which leaves the
+    # zero entries as uninitialized memory and warns on every call.  Zeros
+    # are better reported as -inf.
+    with np.errstate(divide="ignore"):
+        return scaling * np.log10(data)
 
 
 def enbw(window, Fs=None):
