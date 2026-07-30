@@ -2,6 +2,7 @@
 # PortAudio audio source.
 #
 
+import argparse
 import sys
 import threading
 
@@ -9,6 +10,39 @@ import numpy as np
 import sounddevice
 
 import source
+
+
+def _int_or_str(text):
+    # sounddevice selects a device by integer index or by a substring of
+    # its name, so a bare number is an index and anything else is a name.
+    try:
+        return int(text)
+    except ValueError:
+        return text
+
+
+def _print_input_devices(file):
+    for d in sounddevice.query_devices():
+        if not d["max_input_channels"]:
+            continue
+        print(
+            f" {d['index']:2} {d['name']:40s} input_channels={d['max_input_channels']}",
+            file=file,
+        )
+
+
+class _ListDevicesAction(argparse.Action):
+    # Lists devices and exits, like argparse's own --help. Because the
+    # action runs as the option is consumed, it exits before argparse
+    # enforces the required -d, so --list-devices needs no device.
+    def __init__(self, option_strings, dest, **kwargs):
+        super().__init__(
+            option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs
+        )
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        _print_input_devices(sys.stdout)
+        parser.exit()
 
 
 class PortAudioSource(source.Source):
@@ -31,7 +65,17 @@ class PortAudioSource(source.Source):
     @staticmethod
     def augment_argparse(parser):
         parser.add_argument(
-            "-d", "--device", type=str, required=True, help="audio device to open"
+            "-d",
+            "--device",
+            type=_int_or_str,
+            required=True,
+            help="audio device to open: numeric index or name substring "
+            "(see --list-devices)",
+        )
+        parser.add_argument(
+            "--list-devices",
+            action=_ListDevicesAction,
+            help="list available input devices and exit",
         )
 
     def __init__(self, args):
@@ -59,16 +103,7 @@ class PortAudioSource(source.Source):
         except ValueError as e:
             print(f"failed to open sound device: {e})", file=sys.stderr)
             print("try:", file=sys.stderr)
-            for d in sounddevice.query_devices():
-                index = d["index"]
-                name = d["name"]
-                max_input_channels = d["max_input_channels"]
-                if not max_input_channels:
-                    continue
-                print(
-                    f" {index:2} {name:40s} input_channels={max_input_channels}",
-                    file=sys.stderr,
-                )
+            _print_input_devices(sys.stderr)
             raise
 
     def _callback(self, indata, _frames, _time, status):
