@@ -90,8 +90,6 @@ def run(source_class, source_args):
                     if filter:
                         samples = filter(samples)
 
-                        t = np.arange(len(samples)) / sample_frequency
-
                         (sinad, _) = pysnr.sinad_signal(samples,
                                                         fs=sample_frequency)
 
@@ -100,7 +98,7 @@ def run(source_class, source_args):
                         keithley_sinad_dB = float(
                             keithley_meter.query(":READ?"))
                         if keithley_sinad_dB > 1e6:
-                            keithely_sinad_dB = float('nan')
+                            keithley_sinad_dB = float('nan')
                         keithley_sinad_dB_readings.append(keithley_sinad_dB)
                         keithley_freq_Hz = float(
                             keithley_meter.query(":SENS:DIST:FREQ?"))
@@ -119,12 +117,12 @@ def run(source_class, source_args):
                 keithley_freq_mean_Hz = keithley_freq_Hz_readings.mean()
                 keithley_freq_std_Hz = keithley_freq_Hz_readings.std()
 
-                print(f" sinad={sinad_mean_dB:10.3f} dB std={
-                      sinad_std_dB:10.3f} dB", end="")
-                print(f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB keithley_std={
-                      keithley_sinad_std_dB:10.3f}", end="")
-                print(f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz keithley_std={
-                      keithley_freq_std_Hz:10.3f} Hz", end="")
+                print(f" sinad={sinad_mean_dB:10.3f} dB"
+                      f" std={sinad_std_dB:10.3f} dB", end="")
+                print(f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
+                      f" keithley_std={keithley_sinad_std_dB:10.3f}", end="")
+                print(f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
+                      f" keithley_std={keithley_freq_std_Hz:10.3f} Hz", end="")
                 print()
                 data.append(dict(power_dBm=power_dBm,
                                  sinad_mean_dB=sinad_mean_dB,
