@@ -9,7 +9,8 @@ class FirFilter:
 
     def __call__(self, samples):
         filtered_samples, new_state = scipy.signal.lfilter(
-            self._taps, 1., samples, zi=self._state)
+            self._taps, 1.0, samples, zi=self._state
+        )
         self._state = new_state
         return filtered_samples
 
@@ -44,10 +45,10 @@ def make_fir_lowpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
     Returns:
         FirFilter: the filter
     """
-    assert (numtaps % 2 != 0)
-    nyquist = sample_frequency / 2.
+    assert numtaps % 2 != 0
+    nyquist = sample_frequency / 2.0
     normalized_cutoff = cutoff_frequency / nyquist
-    taps = scipy.signal.firwin(numtaps, normalized_cutoff, pass_zero='lowpass')
+    taps = scipy.signal.firwin(numtaps, normalized_cutoff, pass_zero="lowpass")
     return FirFilter(taps)
 
 
@@ -64,16 +65,16 @@ def make_fir_highpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
     Returns:
         FirFilter: the filter
     """
-    assert (numtaps % 2 != 0)
-    nyquist = sample_frequency / 2.
+    assert numtaps % 2 != 0
+    nyquist = sample_frequency / 2.0
     normalized_cutoff = cutoff_frequency / nyquist
-    taps = scipy.signal.firwin(
-        numtaps, normalized_cutoff, pass_zero='highpass')
+    taps = scipy.signal.firwin(numtaps, normalized_cutoff, pass_zero="highpass")
     return FirFilter(taps)
 
 
-def make_fir_bandpass_filter(sample_frequency,
-                             lowcut_frequency, highcut_frequency, numtaps=101):
+def make_fir_bandpass_filter(
+    sample_frequency, lowcut_frequency, highcut_frequency, numtaps=101
+):
     """
     Makes a linear-phase FIR band-pass filter.
 
@@ -87,11 +88,11 @@ def make_fir_bandpass_filter(sample_frequency,
     Returns:
         FirFilter: the filter
     """
-    assert (numtaps % 2 != 0)
-    nyquist = sample_frequency / 2.
+    assert numtaps % 2 != 0
+    nyquist = sample_frequency / 2.0
     normalized_lowcut = lowcut_frequency / nyquist
     normalized_highcut = highcut_frequency / nyquist
-    taps = scipy.signal.firwin(numtaps,
-                               [normalized_lowcut, normalized_highcut],
-                               pass_zero='bandpass')
+    taps = scipy.signal.firwin(
+        numtaps, [normalized_lowcut, normalized_highcut], pass_zero="bandpass"
+    )
     return FirFilter(taps)

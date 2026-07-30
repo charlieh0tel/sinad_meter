@@ -4,18 +4,13 @@ import argparse
 import sys
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.style as mplstyle
 import pandas as pd
 import pyvisa
 
 import filters
-from vendored import pysnr
 import source as source_pkg
-
-from instruments import hp_8662a
-from instruments import keithley_2015
-from instruments import rs_smb100a
+from instruments import hp_8662a, keithley_2015, rs_smb100a
+from vendored import pysnr
 
 DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE = "TCPIP::rssmb100a180609.local::INSTR"
 DEFAULT_HP_8663A_SIG_GEN_RESOURCE = "TCPIP::e5810a::gpib0,25::INSTR"
@@ -56,16 +51,21 @@ def make_siggen(name, resource_manager, resource_name=None):
     return factory(resource_manager, resource_name or default_resource_name)
 
 
-def run(source_class, source_args, siggen_name, siggen_resource_name,
-        keithley_resource_name, output_path):
-    lpf_cutoff = 200.
-    hpf_cutoff = 4000.
+def run(
+    source_class,
+    source_args,
+    siggen_name,
+    siggen_resource_name,
+    keithley_resource_name,
+    output_path,
+):
+    lpf_cutoff = 200.0
+    hpf_cutoff = 4000.0
 
-    rm = pyvisa.ResourceManager('@py')
+    rm = pyvisa.ResourceManager("@py")
     siggen_resource = make_siggen(siggen_name, rm, siggen_resource_name)
 
-    keithley_meter = keithley_2015.Keithley2015(
-        rm, keithley_resource_name).open()
+    keithley_meter = keithley_2015.Keithley2015(rm, keithley_resource_name).open()
     keithley_meter.inst.timeout = 10e3
     keithley_meter.reset()
     keithley_meter.write(":SENS:FUNC 'dist'")
@@ -92,7 +92,8 @@ def run(source_class, source_args, siggen_name, siggen_resource_name,
     filter = None
     if lpf_cutoff and hpf_cutoff:
         filter = filters.make_fir_bandpass_filter(
-            sample_frequency, lpf_cutoff, hpf_cutoff)
+            sample_frequency, lpf_cutoff, hpf_cutoff
+        )
     elif lpf_cutoff:
         filter = filters.make_fir_lowpass_filter(sample_frequency, lpf_cutoff)
     elif hpf_cutoff:
@@ -113,54 +114,64 @@ def run(source_class, source_args, siggen_name, siggen_resource_name,
                 sinad_dB_readings = []
                 keithley_sinad_dB_readings = []
                 keithley_freq_Hz_readings = []
-                for n in range(128):
+                for _ in range(128):
                     samples = source.read()
                     assert len(samples) == num_samples
 
                     if filter:
                         samples = filter(samples)
 
-                        (sinad, _) = pysnr.sinad_signal(samples,
-                                                        fs=sample_frequency)
+                        (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
 
                         sinad_dB_readings.append(sinad)
 
-                        keithley_sinad_dB = float(
-                            keithley_meter.query(":READ?"))
+                        keithley_sinad_dB = float(keithley_meter.query(":READ?"))
                         if keithley_sinad_dB > 1e6:
-                            keithley_sinad_dB = float('nan')
+                            keithley_sinad_dB = float("nan")
                         keithley_sinad_dB_readings.append(keithley_sinad_dB)
                         keithley_freq_Hz = float(
-                            keithley_meter.query(":SENS:DIST:FREQ?"))
+                            keithley_meter.query(":SENS:DIST:FREQ?")
+                        )
                         if keithley_freq_Hz > 1e6:
-                            keithley_freq_Hz = float('nan')
+                            keithley_freq_Hz = float("nan")
                         keithley_freq_Hz_readings.append(keithley_freq_Hz)
 
                 sinad_dB_readings = np.array(sinad_dB_readings)
                 sinad_mean_dB = sinad_dB_readings.mean()
                 sinad_std_dB = sinad_dB_readings.std()
-                keithley_sinad_dB_readings = np.array(
-                    keithley_sinad_dB_readings)
+                keithley_sinad_dB_readings = np.array(keithley_sinad_dB_readings)
                 keithley_sinad_mean_dB = keithley_sinad_dB_readings.mean()
                 keithley_sinad_std_dB = keithley_sinad_dB_readings.std()
                 keithley_freq_Hz_readings = np.array(keithley_freq_Hz_readings)
                 keithley_freq_mean_Hz = keithley_freq_Hz_readings.mean()
                 keithley_freq_std_Hz = keithley_freq_Hz_readings.std()
 
-                print(f" sinad={sinad_mean_dB:10.3f} dB"
-                      f" std={sinad_std_dB:10.3f} dB", end="")
-                print(f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
-                      f" keithley_std={keithley_sinad_std_dB:10.3f}", end="")
-                print(f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
-                      f" keithley_std={keithley_freq_std_Hz:10.3f} Hz", end="")
+                print(
+                    f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
+                    end="",
+                )
+                print(
+                    f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
+                    f" keithley_std={keithley_sinad_std_dB:10.3f}",
+                    end="",
+                )
+                print(
+                    f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
+                    f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
+                    end="",
+                )
                 print()
-                data.append(dict(power_dBm=power_dBm,
-                                 sinad_mean_dB=sinad_mean_dB,
-                                 sinad_std_dB=sinad_std_dB,
-                                 keithley_sinad_mean_dB=keithley_sinad_mean_dB,
-                                 keithley_sinad_std_dB=keithley_sinad_std_dB,
-                                 keithley_freq_mean_Hz=keithley_freq_mean_Hz,
-                                 keithley_freq_std_Hz=keithley_freq_std_Hz))
+                data.append(
+                    {
+                        "power_dBm": power_dBm,
+                        "sinad_mean_dB": sinad_mean_dB,
+                        "sinad_std_dB": sinad_std_dB,
+                        "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
+                        "keithley_sinad_std_dB": keithley_sinad_std_dB,
+                        "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
+                        "keithley_freq_std_Hz": keithley_freq_std_Hz,
+                    }
+                )
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
     print(f"wrote {output_path}")
@@ -171,57 +182,69 @@ def main():
     for line in source_pkg.describe_unavailable_backends():
         print(f"note: {line}", file=sys.stderr)
 
-    parser = argparse.ArgumentParser(
-        description="SINAD Meter")
+    parser = argparse.ArgumentParser(description="SINAD Meter")
 
     parser.add_argument(
-        "-S", "--source",
+        "-S",
+        "--source",
         choices=[source.name for source in registry],
         default="portaudio",
-        help="Selects source.")
+        help="Selects source.",
+    )
     parser.add_argument(
         "--help-source",
         action="store_true",
         dest="help_source",
-        help="Prints usage related to selected source.")
+        help="Prints usage related to selected source.",
+    )
     parser.add_argument(
-        "-G", "--siggen",
+        "-G",
+        "--siggen",
         choices=sorted(SIGGENS),
         default=DEFAULT_SIGGEN,
-        help=f"Selects signal generator (default: {DEFAULT_SIGGEN}).")
+        help=f"Selects signal generator (default: {DEFAULT_SIGGEN}).",
+    )
     parser.add_argument(
         "--siggen-resource",
         dest="siggen_resource",
         help="VISA resource of the signal generator "
-             "(default: depends on the generator)")
+        "(default: depends on the generator)",
+    )
     parser.add_argument(
         "--keithley-resource",
         dest="keithley_resource",
         default=DEFAULT_KEITHLEY_2015_RESOURCE,
         help=f"VISA resource of the Keithley 2015 "
-             f"(default: {DEFAULT_KEITHLEY_2015_RESOURCE})")
+        f"(default: {DEFAULT_KEITHLEY_2015_RESOURCE})",
+    )
     parser.add_argument(
-        "-o", "--output",
-        help="CSV to write (default: auto_sinad_<siggen>.csv)")
+        "-o", "--output", help="CSV to write (default: auto_sinad_<siggen>.csv)"
+    )
 
     (args, unparsed_args) = parser.parse_known_args()
 
     source_class = registry.get(args.source)
     source_parser = argparse.ArgumentParser(
-        description=f"SINAD Meter using {source_class.pretty_name}")
+        description=f"SINAD Meter using {source_class.pretty_name}"
+    )
     default_sample_frequency = source_class.default_sample_frequency()
     source_parser.add_argument(
-        "-s", "--sample-frequency",
+        "-s",
+        "--sample-frequency",
         type=float,
         default=default_sample_frequency,
-        help=f"sample frequency, in samples per second (default: {default_sample_frequency} Hz)")
+        help="sample frequency, in samples per second "
+        f"(default: {default_sample_frequency} Hz)",
+    )
 
     default_record_length = source_class.default_record_length()
     source_parser.add_argument(
-        "-r", "--record-length",
+        "-r",
+        "--record-length",
         type=float,
         default=default_record_length,
-        help=f"record length, in seconds (default: {default_record_length} s)")
+        help=f"record length, in seconds (default: {default_record_length} s)",
+    )
 
     source_class.augment_argparse(source_parser)
     if args.help_source:
@@ -230,8 +253,14 @@ def main():
     source_args = source_parser.parse_args(args=unparsed_args)
 
     output_path = args.output or f"auto_sinad_{args.siggen}.csv"
-    run(source_class, source_args, args.siggen, args.siggen_resource,
-        args.keithley_resource, output_path)
+    run(
+        source_class,
+        source_args,
+        args.siggen,
+        args.siggen_resource,
+        args.keithley_resource,
+        output_path,
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,4 @@
 import importlib
-from typing import Type
 
 import registries
 
@@ -10,8 +9,7 @@ class Source:
 
     @staticmethod
     def default_sample_frequency():
-        raise NotImplementedError(
-            "default_sample_frequency is not implemented")
+        raise NotImplementedError("default_sample_frequency is not implemented")
 
     @staticmethod
     def default_record_length():
@@ -48,10 +46,8 @@ class Source:
         self.close()
 
 
-#
-#
-class SourceRegistry(registries.Registry[Type[Source]]):
-    lookup_attrs = ('name',)
+class SourceRegistry(registries.Registry[type[Source]]):
+    lookup_attrs = ("name",)
 
 
 SOURCE_REGISTRY = SourceRegistry()
@@ -63,7 +59,7 @@ SOURCE_REGISTRY = SourceRegistry()
 # them here keeps that in one place instead of relying on every script
 # to import backends it never names.
 #
-_BACKEND_MODULES = ('source_digilent', 'source_portaudio')
+_BACKEND_MODULES = ("source_digilent", "source_portaudio")
 
 # Backends whose import failed, as module name -> the ImportError.  A
 # missing backend is not fatal: pydwf is of no interest if you are
@@ -96,5 +92,7 @@ def describe_unavailable_backends():
     Returns:
         list[str]: one line per unavailable backend, empty if all loaded
     """
-    return [f"{module_name} is unavailable: {e}"
-            for module_name, e in sorted(UNAVAILABLE_BACKENDS.items())]
+    return [
+        f"{module_name} is unavailable: {e}"
+        for module_name, e in sorted(UNAVAILABLE_BACKENDS.items())
+    ]
