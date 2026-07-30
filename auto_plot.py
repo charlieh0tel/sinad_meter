@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -9,7 +10,24 @@ from scipy.interpolate import interp1d
 
 
 def main(argv):
-    path = Path(argv[1])
+    parser = argparse.ArgumentParser(description="Plots a SINAD sweep.")
+    parser.add_argument("csv", type=Path, help="sweep CSV to plot")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="PNG to write (default: the CSV's name with a .png suffix, "
+        "which overwrites any existing plot beside it)",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        dest="no_show",
+        help="Write the PNG without opening a window.",
+    )
+    args = parser.parse_args(argv[1:])
+
+    path = args.csv
     df = pd.read_csv(path)
 
     plt.figure(figsize=(12, 8))
@@ -54,9 +72,11 @@ def main(argv):
     plt.grid(True)
     plt.legend()
 
-    png_path = path.with_suffix(".png")
+    png_path = args.output or path.with_suffix(".png")
     plt.savefig(png_path)
-    plt.show()
+    print(f"wrote {png_path}")
+    if not args.no_show:
+        plt.show()
 
     return 0
 
