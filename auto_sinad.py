@@ -12,8 +12,6 @@ import pyvisa
 import filters
 from vendored import pysnr
 import source as source_pkg
-import source_digilent          # for effect
-import source_portaudio         # for effect
 
 from instruments import hp_8662a
 from instruments import keithley_2015
@@ -23,19 +21,51 @@ DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE = "TCPIP::rssmb100a180609.local::INSTR"
 DEFAULT_HP_8663A_SIG_GEN_RESOURCE = "TCPIP::e5810a::gpib0,25::INSTR"
 DEFAULT_KEITHLEY_2015_RESOURCE = "TCPIP::e5810a::gpib0,22::INSTR"
 
+DEFAULT_SIGGEN = "hp8663a"
 
-def run(source_class, source_args):
+
+def _make_hp8663a(_resource_manager, resource_name):
+    return hp_8662a.HP8663A(resource_name)
+
+
+def _make_rs_smb100a(resource_manager, resource_name):
+    return rs_smb100a.RhodeSchwarzSMB100A(resource_manager, resource_name)
+
+
+# Signal generator name -> (factory, default VISA resource).  The two
+# drivers take different arguments, hence the factories.
+SIGGENS = {
+    "hp8663a": (_make_hp8663a, DEFAULT_HP_8663A_SIG_GEN_RESOURCE),
+    "rssmb100a": (_make_rs_smb100a, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE),
+}
+
+
+def make_siggen(name, resource_manager, resource_name=None):
+    """
+    Makes a signal generator by name.
+
+    Args:
+        name (str): a key of SIGGENS
+        resource_manager (pyvisa.ResourceManager): the resource manager
+        resource_name (str): VISA resource, or None for the default
+
+    Returns:
+        the signal generator
+    """
+    (factory, default_resource_name) = SIGGENS[name]
+    return factory(resource_manager, resource_name or default_resource_name)
+
+
+def run(source_class, source_args, siggen_name, siggen_resource_name,
+        keithley_resource_name, output_path):
     lpf_cutoff = 200.
     hpf_cutoff = 4000.
 
     rm = pyvisa.ResourceManager('@py')
-    #siggen_resource = rs_smb100a.RhodeSchwarzSMB100A(
-    #    rm, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE)
-
-    siggen_resource = hp_8662a.HP8663A(DEFAULT_HP_8663A_SIG_GEN_RESOURCE)
+    siggen_resource = make_siggen(siggen_name, rm, siggen_resource_name)
 
     keithley_meter = keithley_2015.Keithley2015(
-        rm, DEFAULT_KEITHLEY_2015_RESOURCE).open()
+        rm, keithley_resource_name).open()
     keithley_meter.inst.timeout = 10e3
     keithley_meter.reset()
     keithley_meter.write(":SENS:FUNC 'dist'")
@@ -132,16 +162,21 @@ def run(source_class, source_args):
                                  keithley_freq_mean_Hz=keithley_freq_mean_Hz,
                                  keithley_freq_std_Hz=keithley_freq_std_Hz))
     df = pd.DataFrame(data)
-    df.to_csv("auto_sinad.csv", index=False)
+    df.to_csv(output_path, index=False)
+    print(f"wrote {output_path}")
 
 
 def main():
+    registry = source_pkg.load_sources()
+    for line in source_pkg.describe_unavailable_backends():
+        print(f"note: {line}", file=sys.stderr)
+
     parser = argparse.ArgumentParser(
         description="SINAD Meter")
 
     parser.add_argument(
         "-S", "--source",
-        choices=[source.name for source in source_pkg.SOURCE_REGISTRY],
+        choices=[source.name for source in registry],
         default="portaudio",
         help="Selects source.")
     parser.add_argument(
@@ -149,10 +184,29 @@ def main():
         action="store_true",
         dest="help_source",
         help="Prints usage related to selected source.")
+    parser.add_argument(
+        "-G", "--siggen",
+        choices=sorted(SIGGENS),
+        default=DEFAULT_SIGGEN,
+        help=f"Selects signal generator (default: {DEFAULT_SIGGEN}).")
+    parser.add_argument(
+        "--siggen-resource",
+        dest="siggen_resource",
+        help="VISA resource of the signal generator "
+             "(default: depends on the generator)")
+    parser.add_argument(
+        "--keithley-resource",
+        dest="keithley_resource",
+        default=DEFAULT_KEITHLEY_2015_RESOURCE,
+        help=f"VISA resource of the Keithley 2015 "
+             f"(default: {DEFAULT_KEITHLEY_2015_RESOURCE})")
+    parser.add_argument(
+        "-o", "--output",
+        help="CSV to write (default: auto_sinad_<siggen>.csv)")
 
     (args, unparsed_args) = parser.parse_known_args()
 
-    source_class = source_pkg.SOURCE_REGISTRY.get(args.source)
+    source_class = registry.get(args.source)
     source_parser = argparse.ArgumentParser(
         description=f"SINAD Meter using {source_class.pretty_name}")
     default_sample_frequency = source_class.default_sample_frequency()
@@ -175,7 +229,9 @@ def main():
         return
     source_args = source_parser.parse_args(args=unparsed_args)
 
-    run(source_class, source_args)
+    output_path = args.output or f"auto_sinad_{args.siggen}.csv"
+    run(source_class, source_args, args.siggen, args.siggen_resource,
+        args.keithley_resource, output_path)
 
 
 if __name__ == "__main__":
