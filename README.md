@@ -53,7 +53,7 @@ uv run ./sinad_meter.py
 
 `uv run` works for the other scripts here too, e.g. `uv run ./auto_sinad.py`.
 
-It has only been tested on Linux.  (It might work on Windoze; it might not.)
+It mainly has been tested on Linux.  It appears to run on Windoze fine.
 
 73 DE AI6KG<br />
 Christopher Hoover<br />
