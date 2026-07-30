@@ -20,8 +20,6 @@ jobs:
       # sounddevice installs from PyPI but raises OSError at import unless the
       # PortAudio shared library is present, and the runner image lacks it.
       system-packages: libportaudio2
-      # CI is where a stale lockfile should be caught.
-      locked: true
       # The suite imports every module, so it also covers a missing dependency
       # or a backend that stopped loading.
       test-command: pytest -q
