@@ -8,46 +8,20 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
     strategy:
       fail-fast: false
       matrix:
         # 3.11 is the declared floor; 3.13 is where the stdlib lost xdrlib,
         # which is what the standard-xdrlib marker in pyproject.toml covers.
         python-version: ["3.11", "3.12", "3.13"]
-    steps:
-    - uses: actions/checkout@v7
-      with:
-        submodules: recursive
-
-    - name: Install uv
-      # Exact tag, not a floating major: setup-uv publishes moving major tags
-      # only up to v7, so `@v9` does not resolve even though v9.0.0 is current.
-      uses: astral-sh/setup-uv@v9.0.0
-      with:
-        enable-cache: true
-        python-version: ${{ matrix.python-version }}
-
-    # sounddevice binds to the PortAudio shared library, which the
-    # runner image does not carry; without it the PortAudio backend
-    # cannot load and the smoke test below has nothing to check.
-    - name: Install PortAudio
-      run: sudo apt-get update && sudo apt-get install -y libportaudio2
-
-    - name: Install dependencies
-      run: uv sync --locked
-
-    - name: Lint
-      run: uv run ruff check .
-
-    - name: Check formatting
-      run: uv run ruff format --check .
-
-    # Includes an import of every module, which is what catches a missing
-    # dependency or a backend that stopped loading.
-    - name: Test
-      env:
-        MPLBACKEND: Agg
-      run: uv run pytest -q
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
+    with:
+      python-version: ${{ matrix.python-version }}
+      # sounddevice installs from PyPI but raises OSError at import unless the
+      # PortAudio shared library is present, and the runner image lacks it.
+      system-packages: libportaudio2
+      # CI is where a stale lockfile should be caught.
+      locked: true
+      # The suite imports every module, so it also covers a missing dependency
+      # or a backend that stopped loading.
+      test-command: pytest -q

@@ -6,14 +6,11 @@
 #
 
 import importlib
-import os
 import pathlib
 
 import pytest
 
 import source
-
-os.environ.setdefault("MPLBACKEND", "Agg")
 
 ROOT = pathlib.Path(__file__).parent.parent
 
