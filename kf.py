@@ -2,9 +2,10 @@
 
 import sys
 
-import keithley_2015
 import pandas as pd
 import pyvisa
+
+from instruments import keithley_2015
 
 DEFAULT_KEITHLEY_2015_RESOURCE = "TCPIP::e5810a::gpib0,22::INSTR"
 

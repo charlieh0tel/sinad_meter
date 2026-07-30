@@ -10,10 +10,9 @@ dependencies = [
     "numpy",
     "pandas",
     "pydwf",
-    "pyserial>=3.5",
     "python-vxi11>=0.9",
     "pyvisa",
-    "pyvisa-py>=0.8.1",
+    "pyvisa-py[serial]>=0.8.1",
     "registries",
     "scipy",
     "sounddevice",
@@ -22,3 +21,6 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = ["pre-commit", "ruff"]

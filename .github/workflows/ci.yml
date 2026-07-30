@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the declared floor; 3.13 is where the stdlib lost xdrlib,
+        # which is what the standard-xdrlib marker in pyproject.toml covers.
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+
+    - name: Install uv
+      # Exact tag, not a floating major: setup-uv publishes moving major tags
+      # only up to v7, so `@v9` does not resolve even though v9.0.0 is current.
+      uses: astral-sh/setup-uv@v9.0.0
+      with:
+        enable-cache: true
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --locked
+
+    - name: Lint
+      run: uv run ruff check .
+
+    - name: Check formatting
+      run: uv run ruff format --check .
+
+    # The scripts are __main__-guarded and the backends touch no hardware at
+    # import, so this runs no instrument I/O.  It is what catches a missing
+    # dependency, and -- via load_sources() -- a backend that fails to import.
+    - name: Import every module
+      env:
+        MPLBACKEND: Agg
+      run: |
+        uv run python -c "
+        import importlib, pathlib
+        mods = sorted(p.stem for p in pathlib.Path('.').glob('*.py'))
+        for m in mods:
+            importlib.import_module(m)
+            print(f'ok {m}')
+        import source
+        assert not source.UNAVAILABLE_BACKENDS, source.UNAVAILABLE_BACKENDS
+        assert [s.name for s in source.load_sources()], 'no sources registered'
+        print(f'{len(mods)} modules imported, sources:',
+              [s.name for s in source.SOURCE_REGISTRY])
+        "
