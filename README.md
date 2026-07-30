@@ -7,8 +7,10 @@ value as text.
 ![Image](images/running-on-portaudio.png)
 ![Image](images/running-on-pydwf-on-ad3.png)
 
-Video (the synthesizer power ramps up power into receiver and the
-SINAD subsquently increases): [Video](https://youtu.be/gy6IAjbTO2o)
+The synthesizer ramps up power into the receiver and the SINAD
+subsequently increases:
+
+[![Watch the meter running](https://img.youtube.com/vi/gy6IAjbTO2o/maxresdefault.jpg)](https://youtu.be/gy6IAjbTO2o)
 
 ## Performance
 
