@@ -48,6 +48,9 @@ jobs:
     # The scripts are __main__-guarded and the backends touch no hardware at
     # import, so this runs no instrument I/O.  It is what catches a missing
     # dependency, and -- via load_sources() -- a backend that fails to import.
+    - name: Test
+      run: uv run pytest -q
+
     - name: Import every module
       env:
         MPLBACKEND: Agg

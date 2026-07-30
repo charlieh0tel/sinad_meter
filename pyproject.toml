@@ -23,4 +23,13 @@ dependencies = [
 package = false
 
 [dependency-groups]
-dev = ["pre-commit", "ruff"]
+dev = [
+    "pre-commit",
+    "pytest>=9.1.1",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+# The modules under test live at the repo root, not in a package.
+pythonpath = ["."]
+testpaths = ["tests"]
