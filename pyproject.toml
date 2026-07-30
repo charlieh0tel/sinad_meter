@@ -17,6 +17,7 @@ dependencies = [
     "registries",
     "scipy",
     "sounddevice",
+    "standard-xdrlib>=3.13.0 ; python_full_version >= '3.13'",
 ]
 
 [tool.uv]
