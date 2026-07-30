@@ -1,0 +1,7 @@
+# The vendored copy of pysnr is kept close to upstream so that local
+# changes read as a diff against it; see vendored/pysnr.  instruments is
+# the ee-instruments submodule, which is linted by its own CI.
+extend-exclude = [
+    "instruments",
+    "vendored",
+]

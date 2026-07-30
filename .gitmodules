@@ -1,0 +1,3 @@
+[submodule "instruments"]
+	path = instruments
+	url = git@github.com:charlieh0tel/ee-instruments.git

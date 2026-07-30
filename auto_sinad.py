@@ -15,9 +15,9 @@ import source as source_pkg
 import source_digilent          # for effect
 import source_portaudio         # for effect
 
-import rs_smb100a
-import hp_8662a
-import keithley_2015
+from instruments import hp_8662a
+from instruments import keithley_2015
+from instruments import rs_smb100a
 
 DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE = "TCPIP::rssmb100a180609.local::INSTR"
 DEFAULT_HP_8663A_SIG_GEN_RESOURCE = "TCPIP::e5810a::gpib0,25::INSTR"
