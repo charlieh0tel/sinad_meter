@@ -73,6 +73,42 @@ def _summarize(readings):
     return (valid.mean(), valid.std(), valid.size)
 
 
+def _open_keithley(resource_manager, resource_name, hpf_cutoff, lpf_cutoff):
+    """
+    Opens and configures the Keithley 2015 as a SINAD reference.
+
+    Args:
+        resource_manager (pyvisa.ResourceManager): the resource manager
+        resource_name (str): VISA resource of the meter
+        hpf_cutoff (float): highpass cutoff (Hz), or None
+        lpf_cutoff (float): lowpass cutoff (Hz), or None
+
+    Returns:
+        keithley_2015.Keithley2015: the opened meter
+    """
+    meter = keithley_2015.Keithley2015(resource_manager, resource_name).open()
+    meter.inst.timeout = 10e3
+    meter.reset()
+    meter.write(":SENS:FUNC 'dist'")
+    meter.write(":SENS:DIST:TYPE SINAD")
+    meter.write(":SENS:DIST:SFIL NONE")
+    meter.write(":SENS:DIST:FREQ:AUTO ON")
+    meter.write(":SENS:DIST:SFIL NONE")  # CCITT?
+    meter.write(":SENS:DIST:RANG:AUTO ON")
+    meter.write(":UNIT:DIST DB")
+    # LCO/HCO are the Keithley's low and high cutoffs, i.e. the passband
+    # edges, matching hpf_cutoff and lpf_cutoff respectively.
+    if hpf_cutoff is not None:
+        assert hpf_cutoff >= 20
+        meter.write(f":SENS:DIST:LCO {int(hpf_cutoff)}")
+        meter.write(":SENS:DIST:LCO:STATE ON")
+    if lpf_cutoff is not None:
+        assert lpf_cutoff <= 50_000
+        meter.write(f":SENS:DIST:HCO {int(lpf_cutoff)}")
+        meter.write(":SENS:DIST:HCO:STATE ON")
+    return meter
+
+
 def run(
     source_class,
     source_args,
@@ -87,26 +123,11 @@ def run(
     rm = pyvisa.ResourceManager("@py")
     siggen_resource = make_siggen(siggen_name, rm, siggen_resource_name)
 
-    keithley_meter = keithley_2015.Keithley2015(rm, keithley_resource_name).open()
-    keithley_meter.inst.timeout = 10e3
-    keithley_meter.reset()
-    keithley_meter.write(":SENS:FUNC 'dist'")
-    keithley_meter.write(":SENS:DIST:TYPE SINAD")
-    keithley_meter.write(":SENS:DIST:SFIL NONE")
-    keithley_meter.write(":SENS:DIST:FREQ:AUTO ON")
-    keithley_meter.write(":SENS:DIST:SFIL NONE")  # CCITT?
-    keithley_meter.write(":SENS:DIST:RANG:AUTO ON")
-    keithley_meter.write(":UNIT:DIST DB")
-    # LCO/HCO are the Keithley's low and high cutoffs, i.e. the passband
-    # edges, matching hpf_cutoff and lpf_cutoff respectively.
-    if hpf_cutoff is not None:
-        assert hpf_cutoff >= 20
-        keithley_meter.write(f":SENS:DIST:LCO {int(hpf_cutoff)}")
-        keithley_meter.write(":SENS:DIST:LCO:STATE ON")
-    if lpf_cutoff is not None:
-        assert lpf_cutoff <= 50_000
-        keithley_meter.write(f":SENS:DIST:HCO {int(lpf_cutoff)}")
-        keithley_meter.write(":SENS:DIST:HCO:STATE ON")
+    keithley_meter = None
+    if keithley_resource_name:
+        keithley_meter = _open_keithley(
+            rm, keithley_resource_name, hpf_cutoff, lpf_cutoff
+        )
 
     sample_frequency = source_args.sample_frequency
     record_length = source_args.record_length
@@ -141,6 +162,9 @@ def run(
                         (sinad, _) = pysnr.sinad_signal(samples, fs=sample_frequency)
                         sinad_dB_readings.append(sinad)
 
+                        if keithley_meter is None:
+                            continue
+
                         keithley_sinad_dB = float(keithley_meter.query(":READ?"))
                         if keithley_sinad_dB > 1e6:
                             keithley_sinad_dB = float("nan")
@@ -169,33 +193,38 @@ def run(
                         f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
                         end="",
                     )
-                    print(
-                        f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
-                        f" keithley_std={keithley_sinad_std_dB:10.3f}",
-                        end="",
-                    )
-                    print(
-                        f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
-                        f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
-                        end="",
-                    )
-                    if keithley_sinad_n != len(keithley_sinad_dB_readings):
+                    if keithley_meter is not None:
+                        print(
+                            f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
+                            f" keithley_std={keithley_sinad_std_dB:10.3f}",
+                            end="",
+                        )
+                        print(
+                            f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
+                            f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
+                            end="",
+                        )
                         discarded = len(keithley_sinad_dB_readings) - keithley_sinad_n
-                        print(f" ({discarded} keithley readings discarded)", end="")
+                        if discarded:
+                            print(f" ({discarded} keithley readings discarded)", end="")
                     print()
-                    data.append(
-                        {
-                            "power_dBm": power_dBm,
-                            "sinad_mean_dB": sinad_mean_dB,
-                            "sinad_std_dB": sinad_std_dB,
-                            "sinad_n": sinad_n,
-                            "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
-                            "keithley_sinad_std_dB": keithley_sinad_std_dB,
-                            "keithley_sinad_n": keithley_sinad_n,
-                            "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
-                            "keithley_freq_std_Hz": keithley_freq_std_Hz,
-                        }
-                    )
+                    row = {
+                        "power_dBm": power_dBm,
+                        "sinad_mean_dB": sinad_mean_dB,
+                        "sinad_std_dB": sinad_std_dB,
+                        "sinad_n": sinad_n,
+                    }
+                    if keithley_meter is not None:
+                        row.update(
+                            {
+                                "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
+                                "keithley_sinad_std_dB": keithley_sinad_std_dB,
+                                "keithley_sinad_n": keithley_sinad_n,
+                                "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
+                                "keithley_freq_std_Hz": keithley_freq_std_Hz,
+                            }
+                        )
+                    data.append(row)
         finally:
             # Never leave the generator transmitting, however we leave.
             siggen.set_output(False)
@@ -236,6 +265,14 @@ def main():
         dest="siggen_resource",
         help="VISA resource of the signal generator "
         "(default: depends on the generator)",
+    )
+    parser.add_argument(
+        "-K",
+        "--keithley",
+        action="store_true",
+        help="Also measure with the Keithley 2015, to check this meter "
+        "against it.  Off by default: it roughly doubles the queries per "
+        "reading and requires the meter to be connected.",
     )
     parser.add_argument(
         "--keithley-resource",
@@ -285,7 +322,7 @@ def main():
         source_args,
         args.siggen,
         args.siggen_resource,
-        args.keithley_resource,
+        args.keithley_resource if args.keithley else None,
         output_path,
     )
 
