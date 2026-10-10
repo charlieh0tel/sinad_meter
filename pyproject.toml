@@ -24,7 +24,7 @@ package = false
 
 [dependency-groups]
 dev = [
-    "pre-commit",
+    "prek",
     "pytest>=9.1.1",
     "ruff",
 ]
