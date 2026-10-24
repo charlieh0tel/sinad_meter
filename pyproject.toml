@@ -41,5 +41,6 @@ filterwarnings = [
     "ignore:xdrlib was removed:DeprecationWarning:vxi11.rpc",
     # ...and has a non-raw regex in vxi11.py, flagged when it is compiled.
     # Compile-time warnings report the file path as the module.
-    "ignore:invalid escape sequence:SyntaxWarning:.*/vxi11/vxi11",
+    # The category is omitted because it is a DeprecationWarning before 3.12.
+    "ignore:invalid escape sequence::.*/vxi11/vxi11",
 ]
