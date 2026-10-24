@@ -37,6 +37,8 @@ filterwarnings = [
     "error",
     # python-vxi11 0.9 (latest) imports the deprecated stdlib xdrlib.
     "ignore:'xdrlib' is deprecated:DeprecationWarning:vxi11.rpc",
+    # On 3.13+, where xdrlib is gone, the standard-xdrlib backport warns instead.
+    "ignore:xdrlib was removed:DeprecationWarning:vxi11.rpc",
     # ...and has a non-raw regex in vxi11.py, flagged when it is compiled.
     # Compile-time warnings report the file path as the module.
     "ignore:invalid escape sequence:SyntaxWarning:.*/vxi11/vxi11",
