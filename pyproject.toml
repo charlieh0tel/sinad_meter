@@ -33,3 +33,7 @@ dev = [
 # The modules under test live at the repo root, not in a package.
 pythonpath = ["."]
 testpaths = ["tests"]
+filterwarnings = [
+    # python-vxi11 0.9 (latest) imports the deprecated stdlib xdrlib.
+    "ignore:'xdrlib' is deprecated:DeprecationWarning:vxi11.rpc",
+]
