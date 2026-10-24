@@ -42,5 +42,6 @@ filterwarnings = [
     # ...and has a non-raw regex in vxi11.py, flagged when it is compiled.
     # Compile-time warnings report the file path as the module.
     # The category is omitted because it is a DeprecationWarning before 3.12.
-    "ignore:invalid escape sequence::.*/vxi11/vxi11",
+    # 3.14 prefixes the message with the offending escape, e.g. "\d" is an ...
+    "ignore:.*invalid escape sequence::.*/vxi11/vxi11",
 ]
