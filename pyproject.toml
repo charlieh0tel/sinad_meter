@@ -34,6 +34,7 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 filterwarnings = [
+    "error",
     # python-vxi11 0.9 (latest) imports the deprecated stdlib xdrlib.
     "ignore:'xdrlib' is deprecated:DeprecationWarning:vxi11.rpc",
 ]
