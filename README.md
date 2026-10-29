@@ -24,9 +24,11 @@ Note that the plotting script annotates the graph with the standard
 
 ## Synthesizer Control
 
-If you have an HP8663A (or probably HP866[23][AB]) or an R&S SMB100A,
-the program can automatically do a SINAD sweep.  This is how the
-graphs above were created.
+If you have an HP 8663A or an R&S SMB100A, the program can
+automatically do a SINAD sweep.  This is how the graphs above were
+created.  Other HP 8662/8663 models probably work with
+`-G hp8663a --modulation-from-front-panel`, kept within their own
+frequency range: the FM codes and frequency limits are the 8663A's.
 
 The sweep sets the carrier (`--frequency`, required) and, where the
 generator supports it, the TIA-603 test modulation: 1 kHz FM at 3 kHz
