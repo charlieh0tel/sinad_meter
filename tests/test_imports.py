@@ -35,5 +35,16 @@ def test_module_imports(name):
 
 def test_every_backend_loads():
     registry = source.load_sources()
-    assert not source.UNAVAILABLE_BACKENDS, source.describe_unavailable_backends()
+    unusable = {
+        name: e
+        for name, e in source.UNAVAILABLE_BACKENDS.items()
+        if isinstance(e, source.UnusableBackendError)
+    }
+    missing = source.UNAVAILABLE_BACKENDS.keys() - unusable.keys()
+    assert not missing, source.describe_unavailable_backends()
+    # A machine that cannot run a backend, such as a CI runner with no
+    # audio server, is not a missing dependency.  Skip, so that it shows
+    # as not checked rather than as passing.
+    if unusable:
+        pytest.skip("; ".join(f"{name}: {e}" for name, e in sorted(unusable.items())))
     assert [s.name for s in registry]

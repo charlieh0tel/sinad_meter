@@ -7,9 +7,20 @@ import sys
 import threading
 
 import numpy as np
-import sounddevice
 
 import source
+
+try:
+    import sounddevice
+except Exception as e:
+    # sounddevice starts PortAudio as the last step of its import, so a
+    # machine with the library but no audio host -- a headless box whose
+    # PortAudio talks to PulseAudio, say -- fails here with sounddevice's
+    # own PortAudioError.  That class cannot be named before the import
+    # succeeds, hence the check by name; anything else propagates.
+    if type(e).__name__ != "PortAudioError":
+        raise
+    raise source.UnusableBackendError(f"PortAudio could not start: {e}") from e
 
 
 def _int_or_str(text):
