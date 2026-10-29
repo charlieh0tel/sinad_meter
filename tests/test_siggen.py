@@ -107,13 +107,44 @@ def test_rs_smb100a_sets_internal_fm():
 def test_rs_smb100a_refuses_fm_it_did_not_take():
     # As when the deviation exceeds what the carrier allows.
     inst = FakeSCPI(overrides={":FM:DEV": "2000.0"})
-    with pytest.raises(RuntimeError, match="FM:DEV"):
+    with pytest.raises(ValueError, match="FM:DEV"):
         make_rs_smb100a(inst).set_fm(1000.0, 3000.0)
 
 
-def test_hp8663a_refuses_fm():
-    with pytest.raises(NotImplementedError):
-        siggen_hp8663a.HP8663A(None, "unused").set_fm(1000.0, 3000.0)
+class FakeHPInst:
+    """A VXI-11 instrument answering MS and serial polls as told."""
+
+    def __init__(self, status_bytes):
+        self.sent = []
+        self.status_bytes = list(status_bytes)
+
+    def write_raw(self, data):
+        self.sent.append(data.decode())
+
+    def read(self):
+        return "00,000,0\r\n"
+
+    def read_stb(self):
+        return self.status_bytes.pop(0)
+
+
+def make_hp8663a(inst):
+    gen = siggen_hp8663a.HP8663A(None, "unused")
+    gen.driver.inst = inst
+    return gen
+
+
+def test_hp8663a_sets_internal_fm():
+    inst = FakeHPInst([0, 0])
+    make_hp8663a(inst).set_fm(1000.0, 3000.0)
+    assert inst.sent == ["MS\n", "FM3KZMF1000HZ\n", "MS\n"]
+
+
+def test_hp8663a_refuses_fm_it_rejected():
+    # An entry error left from before is cleared, not blamed on this entry.
+    inst = FakeHPInst([2, 2])
+    with pytest.raises(ValueError, match="rejected"):
+        make_hp8663a(inst).set_fm(1000.0, 30e3)
 
 
 def fm_args(**kwargs):
