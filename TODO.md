@@ -43,7 +43,9 @@
   is opt-in.
 
 - `agc.py` squares in the input dtype, so int16 input overflows before
-  `np.mean` sees it.  Nothing wires the AGC in today.
+  `np.mean` sees it: the mean goes negative, is clamped, and the gain
+  runs to about 50,000.  Nothing wires the AGC in today.  Fixing this
+  flips the xfail test in `tests/test_agc.py`.
 
 ## TIA-603 conformance
 
