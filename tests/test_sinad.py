@@ -100,3 +100,23 @@ def test_never_negative_without_a_tone():
     assert got_dB >= 0.0
     assert got_dB < 1.0
     assert adc_dB < -10.0
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="TODO.md: the fundamental is whichever peak is largest, so a "
+    "spur above the tone is measured as the signal",
+)
+def test_a_spur_larger_than_the_tone_is_not_the_signal():
+    """
+    The modulation is 1 kHz; a bigger spur elsewhere is noise.
+
+    With a 2.5 kHz spur 6 dB above the tone, S/(N+D) is 1/4, so the radio
+    SINAD is 10*log10(1 + 1/4) = 0.97 dB.  Locking to the spur instead
+    reports 6.99 dB, which looks like a receiver doing fine.
+    """
+    sample_frequency = 48_000
+    t = np.arange(sample_frequency) / sample_frequency
+    signal = np.sin(2 * np.pi * 1000 * t) + 2.0 * np.sin(2 * np.pi * 2500 * t)
+    (got_dB, _) = sinad.measure(signal, sample_frequency)
+    assert got_dB == pytest.approx(_to_radio_sinad(-20 * np.log10(2.0)), abs=0.5)
