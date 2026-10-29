@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d
 
 SENSITIVITY_SINAD_DB = 12.0
 
@@ -14,6 +14,10 @@ SENSITIVITY_SINAD_DB = 12.0
 def sensitivity_dBm(power_dBm, sinad_dB, target_dB=SENSITIVITY_SINAD_DB):
     """
     Finds the power at which a sweep reaches a SINAD, by interpolation.
+
+    This is the first point, going up in power, where SINAD rises
+    through target_dB.  Near sensitivity a sweep is noisy and can dip
+    back below it, so the curve cannot be inverted as a whole.
 
     Args:
         power_dBm (array-like): the power of each step (dBm)
@@ -24,9 +28,18 @@ def sensitivity_dBm(power_dBm, sinad_dB, target_dB=SENSITIVITY_SINAD_DB):
         float: the interpolated power (dBm)
 
     Raises:
-        ValueError: if the sweep never reaches target_dB
+        ValueError: if the sweep never rises through target_dB
     """
-    return float(interp1d(sinad_dB, power_dBm, kind="linear")(target_dB))
+    order = np.argsort(power_dBm)
+    power_dBm = np.asarray(power_dBm, dtype=float)[order]
+    sinad_dB = np.asarray(sinad_dB, dtype=float)[order]
+    crossings = np.flatnonzero(
+        (sinad_dB[:-1] < target_dB) & (sinad_dB[1:] >= target_dB)
+    )
+    if crossings.size == 0:
+        raise ValueError(f"the sweep never rises through {target_dB} dB SINAD")
+    i = crossings[0]
+    return float(np.interp(target_dB, sinad_dB[i : i + 2], power_dBm[i : i + 2]))
 
 
 def main(argv):
