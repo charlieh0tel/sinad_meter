@@ -18,6 +18,18 @@ class HP8663A:
     def close(self):
         self.driver.close()
 
+    def set_frequency(self, frequency_Hz):
+        self.driver.set_frequency(frequency_Hz)
+
+    def set_fm(self, rate_Hz, deviation_Hz):
+        # The HP-IB codes for FM and the internal modulation source have
+        # not been checked against the 8663A manual, and guessing at them
+        # on a generator about to transmit is worse than refusing.
+        raise NotImplementedError(
+            f"FM is not yet supported on the {self.pretty_name}; set it on "
+            "the front panel and pass --modulation-from-front-panel"
+        )
+
     def set_power(self, power_dBm):
         self.driver.set_power(power_dBm)
         # The driver only sends the level when the output is turned on.

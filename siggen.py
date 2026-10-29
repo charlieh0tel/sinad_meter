@@ -12,6 +12,11 @@ import backends
 #   default_resource (str)   -- VISA resource used when none is given
 #   __init__(resource_manager, resource_name)
 #   open(), close()
+#   set_frequency(frequency_Hz)
+#   set_fm(rate_Hz, deviation_Hz)
+#                            -- FM from the internal modulation source.
+#                               Raises NotImplementedError if the
+#                               generator cannot do it.
 #   set_power(power_dBm)     -- takes effect immediately, even with the
 #                               output on
 #   set_output(on)

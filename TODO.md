@@ -42,10 +42,12 @@ least the following are settled.  Section numbers are from TIA-603-E
 and were read from a secondary source, so check them against the real
 standard before relying on any of it.
 
-- The generator is never configured for the standard test signal:
-  §1.3.3.5 wants 1 kHz modulation at 60% of maximum permissible
-  deviation.  `auto_sinad.py` sets only power, so carrier frequency,
-  deviation, and FM enable depend on undocumented front-panel state.
+- The HP 8663A cannot yet be configured for the standard test signal
+  (§1.3.3.5: 1 kHz modulation at 60% of maximum permissible deviation).
+  `auto_sinad.py` sets carrier and FM on generators that support it,
+  but the HP adapter's `set_fm` refuses until its HP-IB codes are taken
+  from the 8663A programming manual, so HP sweeps need
+  `--modulation-from-front-panel` and record `front_panel` in the CSV.
 
 - §2.1.4 wants rated audio output established first, and the reported
   sensitivity to be the worse of the 12 dB SINAD point and the point

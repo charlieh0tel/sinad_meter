@@ -20,6 +20,11 @@ DEFAULT_SIGGEN = "hp8663a"
 # TIA-603 test modulation tone.
 TONE_FREQUENCY_HZ = 1000.0
 
+# TIA-603 standard test modulation: 1 kHz at 60% of the maximum
+# permissible deviation, which is 5 kHz for 25 kHz channels.
+DEFAULT_MOD_RATE_HZ = 1000.0
+DEFAULT_DEVIATION_HZ = 3000.0
+
 
 def _summarize(readings):
     """
@@ -79,11 +84,41 @@ def _open_keithley(resource_manager, resource_name, hpf_cutoff, lpf_cutoff):
     return meter
 
 
+def _fm_settings(args):
+    """
+    Resolves the FM to configure from the command line.
+
+    Args:
+        args (argparse.Namespace): the parsed arguments
+
+    Returns:
+        (float, float): modulation rate and deviation in Hz, or
+                        (None, None) to leave the front panel's
+                        modulation alone
+
+    Raises:
+        ValueError: if the arguments conflict
+    """
+    if args.modulation_from_front_panel:
+        if args.mod_rate is not None or args.deviation is not None:
+            raise ValueError(
+                "--mod-rate and --deviation conflict with --modulation-from-front-panel"
+            )
+        return (None, None)
+    return (
+        DEFAULT_MOD_RATE_HZ if args.mod_rate is None else args.mod_rate,
+        DEFAULT_DEVIATION_HZ if args.deviation is None else args.deviation,
+    )
+
+
 def run(
     source_class,
     source_args,
     siggen_class,
     siggen_resource_name,
+    carrier_Hz,
+    mod_rate_Hz,
+    deviation_Hz,
     keithley_resource_name,
     output_path,
 ):
@@ -111,6 +146,9 @@ def run(
 
     powers_dBm = np.linspace(-125, -95, 51)
     with siggen_pkg.opened(siggen_resource) as siggen:
+        siggen.set_frequency(carrier_Hz)
+        if mod_rate_Hz is not None:
+            siggen.set_fm(mod_rate_Hz, deviation_Hz)
         siggen.set_power(powers_dBm[0])
         siggen.set_output(True)
         for power_dBm in powers_dBm:
@@ -187,6 +225,12 @@ def run(
                     "power_dBm": power_dBm,
                     "sinad_mean_dB": sinad_mean_dB,
                     "sinad_std_dB": sinad_std_dB,
+                    "carrier_Hz": carrier_Hz,
+                    "mod_rate_Hz": mod_rate_Hz,
+                    "deviation_Hz": deviation_Hz,
+                    "modulation": (
+                        "front_panel" if mod_rate_Hz is None else "configured"
+                    ),
                 }
                 if keithley_meter is not None:
                     row.update(
@@ -241,6 +285,31 @@ def main():
         "(default: depends on the generator)",
     )
     parser.add_argument(
+        "-f",
+        "--frequency",
+        type=float,
+        help="carrier frequency, in Hz (required)",
+    )
+    parser.add_argument(
+        "--mod-rate",
+        dest="mod_rate",
+        type=float,
+        help=f"FM rate, in Hz (default: {DEFAULT_MOD_RATE_HZ:g} Hz)",
+    )
+    parser.add_argument(
+        "--deviation",
+        type=float,
+        help=f"FM deviation, in Hz (default: {DEFAULT_DEVIATION_HZ:g} Hz, "
+        "60%% of 5 kHz for 25 kHz channels; use 1500 for 12.5 kHz)",
+    )
+    parser.add_argument(
+        "--modulation-from-front-panel",
+        action="store_true",
+        dest="modulation_from_front_panel",
+        help="Leave modulation as set on the generator's front panel, for "
+        "generators that cannot set FM.  Recorded as such in the CSV.",
+    )
+    parser.add_argument(
         "-K",
         "--keithley",
         action="store_true",
@@ -290,12 +359,29 @@ def main():
         return
     source_args = source_parser.parse_args(args=unparsed_args)
 
+    # Checked here rather than with required=True so that --help-source
+    # works without it.
+    if args.frequency is None:
+        parser.error("--frequency is required")
+    try:
+        (mod_rate_Hz, deviation_Hz) = _fm_settings(args)
+    except ValueError as e:
+        parser.error(str(e))
+    if mod_rate_Hz is None:
+        print(
+            "warning: modulation is whatever the front panel was left at",
+            file=sys.stderr,
+        )
+
     output_path = args.output or f"auto_sinad_{args.siggen}.csv"
     run(
         source_class,
         source_args,
         siggen_registry.get(args.siggen),
         args.siggen_resource,
+        args.frequency,
+        mod_rate_Hz,
+        deviation_Hz,
         args.keithley_resource if args.keithley else None,
         output_path,
     )
