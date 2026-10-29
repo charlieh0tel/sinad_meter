@@ -27,11 +27,6 @@ def test_sensitivity_of_a_recorded_sweep():
     ) == pytest.approx(-114.125, abs=0.001)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="TODO.md: interpolates in SINAD order, not power order, so a "
-    "noisy sweep gives a plausible but wrong crossing",
-)
 def test_sensitivity_of_a_noisy_sweep_is_its_first_crossing():
     # SINAD dips after first passing 12 dB, as a real sweep can near
     # sensitivity.  The crossing is between -118 and -116 dBm; sorting by
