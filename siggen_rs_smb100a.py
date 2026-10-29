@@ -5,6 +5,7 @@ from instruments import rs_smb100a
 
 
 class RhodeSchwarzSMB100A:
+    api_version = siggen.API_VERSION
     name = "rssmb100a"
     pretty_name = "R&S SMB100A"
     default_resource = "TCPIP::rssmb100a180609.local::INSTR"
@@ -49,4 +50,4 @@ class RhodeSchwarzSMB100A:
         self.driver.set_output(on)
 
 
-siggen.SIGGEN_REGISTRY.register(RhodeSchwarzSMB100A)
+siggen.register(RhodeSchwarzSMB100A)

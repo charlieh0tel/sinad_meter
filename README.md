@@ -35,6 +35,36 @@ deviation by default (`--mod-rate`, `--deviation`; use 1500 Hz for
 so pass `--modulation-from-front-panel` and set FM by hand.  The CSV
 records which was used.
 
+### Adding a signal generator
+
+A signal generator is a plain class; it does not import anything from
+here.  [`examples/print_siggen.py`](examples/print_siggen.py) is a
+complete one that drives no hardware, and the members required are
+listed in [`siggen.py`](siggen.py).  There are two ways to use one
+without changing this repository.
+
+For a single file:
+
+```
+uv run ./auto_sinad.py --siggen-plugin my_siggen.py:MySigGen -G mysiggen ...
+```
+
+For a package, declare an entry point in its `pyproject.toml`:
+
+```toml
+[project.entry-points."sinad_meter.siggens"]
+mysiggen = "my_siggens.mysiggen:MySigGen"
+```
+
+and run with it installed for that run only:
+
+```
+uv run --with ../my-siggens ./auto_sinad.py -G mysiggen ...
+```
+
+A plugin that fails to load, lacks a required member, or takes the name
+of a built-in generator is reported with a `note:` and skipped.
+
 ## Receiver Audio Acquisition
 
 For acquisition the code supports:

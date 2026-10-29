@@ -3,6 +3,7 @@ from instruments import hp_8662a
 
 
 class HP8663A:
+    api_version = siggen.API_VERSION
     name = "hp8663a"
     pretty_name = "HP 8663A"
     default_resource = "TCPIP::e5810a::gpib0,25::INSTR"
@@ -41,4 +42,4 @@ class HP8663A:
         self.output_on = on
 
 
-siggen.SIGGEN_REGISTRY.register(HP8663A)
+siggen.register(HP8663A)

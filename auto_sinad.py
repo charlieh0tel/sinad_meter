@@ -256,7 +256,25 @@ def main():
     ):
         print(f"note: {line}", file=sys.stderr)
 
-    parser = argparse.ArgumentParser(description="SINAD Meter")
+    # Plugin files are loaded before the main parser is built, so that
+    # -G can offer them.
+    plugin_parser = argparse.ArgumentParser(add_help=False)
+    plugin_parser.add_argument(
+        "--siggen-plugin",
+        action="append",
+        default=[],
+        dest="siggen_plugins",
+        metavar="FILE.py:CLASS",
+        help="Loads a signal generator from a Python file.  May be repeated.",
+    )
+    (plugin_args, _) = plugin_parser.parse_known_args()
+    for spec in plugin_args.siggen_plugins:
+        try:
+            siggen_pkg.load_plugin_file(spec)
+        except (ValueError, *siggen_pkg.PLUGIN_ERRORS) as e:
+            plugin_parser.error(f"--siggen-plugin {spec}: {e}")
+
+    parser = argparse.ArgumentParser(description="SINAD Meter", parents=[plugin_parser])
 
     parser.add_argument(
         "-S",
