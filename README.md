@@ -63,8 +63,11 @@ and run with it installed for that run only:
 uv run --with ../my-siggens ./auto_sinad.py -G mysiggen ...
 ```
 
-A plugin that fails to load, lacks a required member, or takes the name
-of a built-in generator is reported with a `note:` and skipped.
+An installed plugin that fails to load, lacks a required member, or
+takes the name of a built-in generator is reported with a `note:` and
+skipped, so the other generators stay usable.  The same problems with a
+`--siggen-plugin` file stop the program with an error, since that file
+was asked for by name.
 
 ## Receiver Audio Acquisition
 
