@@ -17,7 +17,9 @@ _NOISY = False
 mplstyle.use("fast")
 
 
-def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
+def run(
+    source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff, tone_frequency
+):
     num_samples = round(sample_frequency * record_length)
 
     acquisition_nr = 0
@@ -45,7 +47,7 @@ def run(source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff):
 
         t = np.arange(len(samples)) / sample_frequency
 
-        (sinad, _) = sinad_pkg.measure(samples, sample_frequency)
+        (sinad, _) = sinad_pkg.measure(samples, sample_frequency, tone_frequency)
 
         if first_time:
             first_time = False
@@ -124,6 +126,14 @@ def main():
     parser.add_argument(
         "-H", "--hpf", type=float, help="highpass cutoff to apply in Hz (default: none)"
     )
+    parser.add_argument(
+        "-t",
+        "--tone",
+        type=float,
+        default=1000.0,
+        help="test tone in Hz; a bigger peak elsewhere counts as noise "
+        "(default: %(default)g Hz)",
+    )
 
     (args, unparsed_args) = parser.parse_known_args()
 
@@ -163,6 +173,7 @@ def main():
             source_args.record_length,
             args.lpf,
             args.hpf,
+            args.tone,
         )
 
 

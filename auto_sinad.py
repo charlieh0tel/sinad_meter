@@ -18,6 +18,9 @@ DEFAULT_KEITHLEY_2015_RESOURCE = "TCPIP::e5810a::gpib0,22::INSTR"
 
 DEFAULT_SIGGEN = "hp8663a"
 
+# TIA-603 test modulation tone.
+TONE_FREQUENCY_HZ = 1000.0
+
 
 def _make_hp8663a(_resource_manager, resource_name):
     return hp_8662a.HP8663A(resource_name)
@@ -159,7 +162,9 @@ def run(
                                 audio_filter.reset()
                             samples = audio_filter(samples)
 
-                        (sinad, _) = sinad_pkg.measure(samples, sample_frequency)
+                        (sinad, _) = sinad_pkg.measure(
+                            samples, sample_frequency, TONE_FREQUENCY_HZ
+                        )
                         sinad_dB_readings.append(sinad)
 
                         if keithley_meter is None:
