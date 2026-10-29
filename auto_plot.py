@@ -8,6 +8,26 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
 
+SENSITIVITY_SINAD_DB = 12.0
+
+
+def sensitivity_dBm(power_dBm, sinad_dB, target_dB=SENSITIVITY_SINAD_DB):
+    """
+    Finds the power at which a sweep reaches a SINAD, by interpolation.
+
+    Args:
+        power_dBm (array-like): the power of each step (dBm)
+        sinad_dB (array-like): the SINAD measured at each step (dB)
+        target_dB (float): the SINAD to find (dB)
+
+    Returns:
+        float: the interpolated power (dBm)
+
+    Raises:
+        ValueError: if the sweep never reaches target_dB
+    """
+    return float(interp1d(sinad_dB, power_dBm, kind="linear")(target_dB))
+
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Plots a SINAD sweep.")
@@ -51,11 +71,9 @@ def main(argv):
             label="Keithley 2015",
         )
 
-    interp_func = interp1d(df["sinad_mean_dB"], df["power_dBm"], kind="linear")
-
-    target_sinad = 12.0
+    target_sinad = SENSITIVITY_SINAD_DB
     try:
-        interpolated_power = interp_func(target_sinad)
+        interpolated_power = sensitivity_dBm(df["power_dBm"], df["sinad_mean_dB"])
         plt.annotate(
             f"{target_sinad} dB SINAD @: {interpolated_power:.2f} dBm\n(interpolated)",
             xy=(interpolated_power, target_sinad),
