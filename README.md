@@ -31,9 +31,10 @@ graphs above were created.
 The sweep sets the carrier (`--frequency`, required) and, where the
 generator supports it, the TIA-603 test modulation: 1 kHz FM at 3 kHz
 deviation by default (`--mod-rate`, `--deviation`; use 1500 Hz for
-12.5 kHz channels).  The SMB100A does this; the HP adapter does not yet,
-so pass `--modulation-from-front-panel` and set FM by hand.  The CSV
-records which was used.
+12.5 kHz channels).  `--modulation-from-front-panel` leaves modulation
+as set by hand instead.  The CSV records which was used.  FM on the
+HP 8663A follows its manual but has not yet been tried on an
+instrument.
 
 ### Adding a signal generator
 
