@@ -1,0 +1,18 @@
+Files in this directory are third-party documents kept for reference.
+They are not covered by this project's LICENSE; each remains under its
+owner's copyright and terms.
+
+9018-05372.pdf
+    HP 8663A Synthesized Signal Generator, Operation and Calibration
+    Manual, including Options 001, 002, and 003.  HP part number
+    08663-90069, Second Edition, revised 12 AUG 1991.
+
+    Copyright (c) 1982 Hewlett-Packard Company.  Hewlett-Packard's test
+    and measurement business is now Keysight Technologies, which
+    publishes this scan as document 9018-05372.
+
+    Redistributed unmodified.  It is the source for the HP 8663A FM
+    program codes in the ee-instruments driver (instruments/hp_8662a.py):
+    Table 3-5, "HP-IB Program Codes"; "Modulation, Internal FM" and
+    "Modulation, External FM"; "HP-IB Status Byte"; and Table 3-9,
+    "Status Codes".

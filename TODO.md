@@ -43,11 +43,12 @@ and were read from a secondary source, so check them against the real
 standard before relying on any of it.
 
 - FM on the HP 8663A (`set_fm` in the ee-instruments driver) was
-  written from the Operation and Calibration Manual, 08663-90069, and
-  has not been tried on an instrument.  Check on one: the deviation and
-  rate actually produced, that a rejected entry raises rather than
-  sweeping, and that no other modulation was left on from the front
-  panel (neither generator turns AM or pulse off).
+  written from the Operation and Calibration Manual, 08663-90069
+  (`third_party/9018-05372.pdf`), and has not been tried on an
+  instrument.  Check on one: the deviation and rate actually produced,
+  that a rejected entry raises rather than sweeping, and that no other
+  modulation was left on from the front panel (neither generator turns
+  AM or pulse off).
 
 - §2.1.4 wants rated audio output established first, and the reported
   sensitivity to be the worse of the 12 dB SINAD point and the point
