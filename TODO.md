@@ -17,10 +17,12 @@
 - The fundamental is whichever spectral peak is largest, so near
   sensitivity the meter can measure the wrong thing.  Verified: with a
   2.5 kHz spur 6 dB above the 1 kHz tone, the estimator locks to
-  2.5 kHz and reports 6.08 dB.  Hum, CTCSS leakage, or an oscillation
-  could do the same on a real receiver.  We know the modulation is
-  1 kHz; search near it, and flag records where the tone is absent or
-  badly displaced rather than returning a plausible number.
+  2.5 kHz and reports 6.99 dB where the truth is 0.97 dB.  Hum, CTCSS
+  leakage, or an oscillation could do the same on a real receiver.  We
+  know the modulation is 1 kHz; search near it, and flag records where
+  the tone is absent or badly displaced rather than returning a
+  plausible number.  Fixing this flips the xfail test in
+  `tests/test_sinad.py`.
 
 ## Robustness
 
