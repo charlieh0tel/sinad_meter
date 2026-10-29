@@ -28,6 +28,13 @@ If you have an HP8663A (or probably HP866[23][AB]) or an R&S SMB100A,
 the program can automatically do a SINAD sweep.  This is how the
 graphs above were created.
 
+The sweep sets the carrier (`--frequency`, required) and, where the
+generator supports it, the TIA-603 test modulation: 1 kHz FM at 3 kHz
+deviation by default (`--mod-rate`, `--deviation`; use 1500 Hz for
+12.5 kHz channels).  The SMB100A does this; the HP adapter does not yet,
+so pass `--modulation-from-front-panel` and set FM by hand.  The CSV
+records which was used.
+
 ## Receiver Audio Acquisition
 
 For acquisition the code supports:
