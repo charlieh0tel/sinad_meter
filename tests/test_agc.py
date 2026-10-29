@@ -68,11 +68,6 @@ def test_steady_input_converges_to_target():
     assert _rms(out) == pytest.approx(0.5, rel=1e-3)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="TODO.md: squares in the input dtype, so int16 overflows and "
-    "the gain runs away",
-)
 def test_int16_input_gets_the_same_gain_as_float():
     # RMS 707 counts: each square is about 1e6, far past int16's 32767.
     as_float = agc.AutomaticGainControl(target_rms=0.5, smoothing_factor=1.0)

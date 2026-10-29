@@ -42,11 +42,6 @@
   closed, on success or on exception.  Low stakes now that the Keithley
   is opt-in.
 
-- `agc.py` squares in the input dtype, so int16 input overflows before
-  `np.mean` sees it: the mean goes negative, is clamped, and the gain
-  runs to about 50,000.  Nothing wires the AGC in today.  Fixing this
-  flips the xfail test in `tests/test_agc.py`.
-
 ## TIA-603 conformance
 
 The measurement is fairly describable as an unweighted, RMS-like,

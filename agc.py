@@ -63,8 +63,9 @@ class AutomaticGainControl:
             return samples
 
         # Calculate the instantaneous power of the current batch using
-        # mean square as power.
-        current_batch_power = np.mean(samples**2)
+        # mean square as power.  Square in floating point: integer
+        # samples, such as int16 from an audio device, overflow silently.
+        current_batch_power = np.mean(np.square(samples, dtype=np.float64))
 
         # Update the internal power estimate using exponential smoothing.
         self._current_power_estimate = (
