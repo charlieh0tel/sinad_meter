@@ -59,6 +59,13 @@ class SourceRegistry(registries.Registry[type[Source]]):
 SOURCE_REGISTRY = SourceRegistry()
 
 
+class UnusableBackendError(ImportError):
+    """
+    A backend whose packages are installed but which this machine cannot
+    run, such as PortAudio with no audio server to connect to.
+    """
+
+
 #
 # Each backend registers itself when imported, so the registry is only
 # as complete as the set of backends that have been imported.  Importing
