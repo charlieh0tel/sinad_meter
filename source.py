@@ -1,6 +1,6 @@
-import importlib
-
 import registries
+
+import backends
 
 
 class Source:
@@ -66,17 +66,10 @@ class UnusableBackendError(ImportError):
     """
 
 
-#
-# Each backend registers itself when imported, so the registry is only
-# as complete as the set of backends that have been imported.  Importing
-# them here keeps that in one place instead of relying on every script
-# to import backends it never names.
-#
+# Each backend registers itself in SOURCE_REGISTRY when imported.
 BACKEND_MODULES = ("source_digilent", "source_portaudio")
 
-# Backends whose import failed, as module name -> the ImportError.  A
-# missing backend is not fatal: pydwf is of no interest if you are
-# capturing through PortAudio, and vice versa.
+# Backends whose import failed, as module name -> the exception.
 UNAVAILABLE_BACKENDS = {}
 
 
@@ -90,14 +83,7 @@ def load_sources():
     Returns:
         SourceRegistry: the populated registry
     """
-    for module_name in BACKEND_MODULES:
-        try:
-            importlib.import_module(module_name)
-        except (ImportError, OSError) as e:
-            # OSError, not just ImportError: a backend's Python package
-            # can be installed while the shared library it binds to is
-            # not, which is how sounddevice reports a missing PortAudio.
-            UNAVAILABLE_BACKENDS[module_name] = e
+    backends.import_backends(BACKEND_MODULES, UNAVAILABLE_BACKENDS)
     return SOURCE_REGISTRY
 
 
@@ -108,7 +94,4 @@ def describe_unavailable_backends():
     Returns:
         list[str]: one line per unavailable backend, empty if all loaded
     """
-    return [
-        f"{module_name} is unavailable: {e}"
-        for module_name, e in sorted(UNAVAILABLE_BACKENDS.items())
-    ]
+    return backends.describe_unavailable(UNAVAILABLE_BACKENDS)
