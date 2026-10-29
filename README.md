@@ -55,6 +55,22 @@ uv run ./sinad_meter.py
 
 `uv run` works for the other scripts here too, e.g. `uv run ./auto_sinad.py`.
 
+## Contributing
+
+Lint and formatting are checked on commit by a git hook run with
+[prek](https://github.com/j178/prek), which is pinned in `uv.lock` like
+everything else.  Install the hook once per clone:
+
+```
+uv run --frozen prek install
+```
+
+The hook, the tests, and any other tool run through uv, as
+`uv run --frozen …`.  Don't install anything into `.venv` by hand: uv
+rebuilds it from the lockfile and will drop it.  To try another Python
+version, use `uv run --isolated --python 3.X pytest`, which leaves
+`.venv` alone.
+
 It mainly has been tested on Linux.  It appears to run on Windoze fine.
 
 73 DE AI6KG<br />
