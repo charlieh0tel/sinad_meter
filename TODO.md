@@ -11,7 +11,8 @@
   point reads about 10.8-11 dB.  Decide what band we actually want and
   design the filter to hit it -- note TIA-603-E does not specify an
   analyzer band-pass at all (see below), so this is our choice to make
-  and then to state.
+  and then to state.  `tests/test_filters.py` pins these figures, so
+  update it along with this note.
 
 - The fundamental is whichever spectral peak is largest, so near
   sensitivity the meter can measure the wrong thing.  Verified: with a
