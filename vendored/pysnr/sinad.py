@@ -3,7 +3,7 @@ from .utils import mag2db, _remove_dc_component, bandpower, periodogram, _get_to
 from .utils import _check_type_and_shape
 
 
-def sinad_signal(signal, fs=1.0):
+def sinad_signal(signal, fs=1.0, fundamental_range=None):
     """SINAD from input signal.
 
     This function computes the SINAD for an input signal.
@@ -16,6 +16,9 @@ def sinad_signal(signal, fs=1.0):
         The true signal
     fs : float
         Sampling Frequency. Defaults to 1.0.
+    fundamental_range : tuple of float, optional
+        (low, high) frequencies to look for the fundamental between.  By
+        default it is the largest peak anywhere.
 
     Returns
     -------
@@ -29,10 +32,10 @@ def sinad_signal(signal, fs=1.0):
         raise TypeError("Signal must be a 1-D array")
     signal_no_dc = _remove_dc_component(signal)
     f, pxx = periodogram(signal_no_dc, fs, window=('kaiser', 38))
-    return sinad_power_spectral_density(pxx, f)
+    return sinad_power_spectral_density(pxx, f, fundamental_range)
 
 
-def sinad_power_spectral_density(pxx, frequencies):
+def sinad_power_spectral_density(pxx, frequencies, fundamental_range=None):
     """SINAD from input signal.
 
     This function computes the SINAD for an input signal from its density-periodogram.
@@ -44,6 +47,9 @@ def sinad_power_spectral_density(pxx, frequencies):
         The power spectral density of the signal
     frequencies : numpy ndarray
         The frequencies corresponding to the power spectral density
+    fundamental_range : tuple of float, optional
+        (low, high) frequencies to look for the fundamental between.  By
+        default it is the largest peak anywhere.
 
     Returns
     -------
@@ -67,7 +73,14 @@ def sinad_power_spectral_density(pxx, frequencies):
     iHarm, iLeft, iRight = _get_tone_indices_from_psd(pxx, frequencies, 0)
     pxx[iLeft:iRight+1] = 0
 
-    fh_idx = np.argmax(pxx)
+    if fundamental_range is None:
+        fh_idx = np.argmax(pxx)
+    else:
+        (low, high) = fundamental_range
+        in_range = np.flatnonzero((f >= low) & (f <= high))
+        if in_range.size == 0:
+            raise ValueError(f"No frequencies between {low} and {high}")
+        fh_idx = in_range[np.argmax(pxx[in_range])]
     first_harmonic = f[fh_idx]
     iHarm, iLeft, iRight = _get_tone_indices_from_psd(pxx, frequencies, first_harmonic)
     signal_pxx = np.copy(pxx[iLeft:iRight + 1])
