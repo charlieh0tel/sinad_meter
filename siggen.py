@@ -21,9 +21,11 @@ import backends
 #   open(), close()
 #   set_frequency(frequency_Hz)
 #   set_fm(rate_Hz, deviation_Hz)
-#                            -- FM from the internal modulation source.
-#                               Raises NotImplementedError if the
-#                               generator cannot do it.
+#                            -- FM from the internal modulation source,
+#                               setting both the rate and the peak
+#                               deviation.  Raises NotImplementedError
+#                               if the generator cannot do it, and
+#                               another exception if it rejects either.
 #   set_power(power_dBm)     -- takes effect immediately, even with the
 #                               output on
 #   set_output(on)
