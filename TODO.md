@@ -30,7 +30,8 @@
 
 - `auto_plot.py` inverts a noisy curve: `interp1d` sorts by SINAD rather
   than power, so a non-monotonic sweep can report a plausible but wrong
-  12 dB sensitivity.  Pick the crossing in power order.
+  12 dB sensitivity.  Pick the crossing in power order.  Fixing this
+  flips the xfail test in `tests/test_auto_plot.py`.
 
 - `auto_sinad.py` records the sweep but never interpolates the 12 dB
   point; only `auto_plot.py` does, and only for the plot annotation.
