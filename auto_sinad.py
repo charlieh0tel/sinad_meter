@@ -17,9 +17,6 @@ DEFAULT_KEITHLEY_2015_RESOURCE = "TCPIP::e5810a::gpib0,22::INSTR"
 
 DEFAULT_SIGGEN = "hp8663a"
 
-# TIA-603 test modulation tone.
-TONE_FREQUENCY_HZ = 1000.0
-
 # TIA-603 standard test modulation: 1 kHz at 60% of the maximum
 # permissible deviation, which is 5 kHz for 25 kHz channels.
 DEFAULT_MOD_RATE_HZ = 1000.0
@@ -144,6 +141,11 @@ def run(
 
     data = []
 
+    # SINAD is measured against the tone the generator is modulating with.
+    # With front-panel modulation that rate is unknown, so assume the
+    # TIA-603 tone.
+    tone_frequency = DEFAULT_MOD_RATE_HZ if mod_rate_Hz is None else mod_rate_Hz
+
     powers_dBm = np.linspace(-125, -95, 51)
     with siggen_pkg.opened(siggen_resource) as siggen:
         siggen.set_frequency(carrier_Hz)
@@ -171,7 +173,7 @@ def run(
                         samples = audio_filter(samples)
 
                     (sinad, _) = sinad_pkg.measure(
-                        samples, sample_frequency, TONE_FREQUENCY_HZ
+                        samples, sample_frequency, tone_frequency
                     )
                     sinad_dB_readings.append(sinad)
 
@@ -325,7 +327,8 @@ def main():
         action="store_true",
         dest="modulation_from_front_panel",
         help="Leave modulation as set on the generator's front panel, for "
-        "generators that cannot set FM.  Recorded as such in the CSV.",
+        "generators that cannot set FM.  Recorded as such in the CSV.  SINAD "
+        f"is then measured against a {DEFAULT_MOD_RATE_HZ:g} Hz tone.",
     )
     parser.add_argument(
         "-K",
@@ -387,7 +390,8 @@ def main():
         parser.error(str(e))
     if mod_rate_Hz is None:
         print(
-            "warning: modulation is whatever the front panel was left at",
+            "warning: modulation is whatever the front panel was left at; "
+            f"SINAD assumes a {DEFAULT_MOD_RATE_HZ:g} Hz tone",
             file=sys.stderr,
         )
 

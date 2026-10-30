@@ -15,10 +15,11 @@
   update it along with this note.
 
 - `sinad.measure()` looks for the test tone within 10% of where it
-  should be (1 kHz in `auto_sinad.py`, `--tone` in `sinad_meter.py`), so
-  a bigger spur no longer becomes the signal.  But when the tone is
-  absent or outside that window it still returns a plausible number,
-  measuring whatever peak is there.  Flag those records instead.
+  should be (the FM rate in `auto_sinad.py`, `--tone` in
+  `sinad_meter.py`), so a bigger spur no longer becomes the signal.  But
+  when the tone is absent or outside that window it still returns a
+  plausible number, measuring whatever peak is there.  Flag those
+  records instead.
 
 ## Robustness
 
