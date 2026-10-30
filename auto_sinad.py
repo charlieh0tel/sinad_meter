@@ -8,50 +8,19 @@ import pandas as pd
 import pyvisa
 
 import filters
+import siggen as siggen_pkg
 import sinad as sinad_pkg
 import source as source_pkg
-from instruments import hp_8662a, keithley_2015, rs_smb100a
+from instruments import keithley_2015
 
-DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE = "TCPIP::rssmb100a180609.local::INSTR"
-DEFAULT_HP_8663A_SIG_GEN_RESOURCE = "TCPIP::e5810a::gpib0,25::INSTR"
 DEFAULT_KEITHLEY_2015_RESOURCE = "TCPIP::e5810a::gpib0,22::INSTR"
 
 DEFAULT_SIGGEN = "hp8663a"
 
-# TIA-603 test modulation tone.
-TONE_FREQUENCY_HZ = 1000.0
-
-
-def _make_hp8663a(_resource_manager, resource_name):
-    return hp_8662a.HP8663A(resource_name)
-
-
-def _make_rs_smb100a(resource_manager, resource_name):
-    return rs_smb100a.RhodeSchwarzSMB100A(resource_manager, resource_name)
-
-
-# Signal generator name -> (factory, default VISA resource).  The two
-# drivers take different arguments, hence the factories.
-SIGGENS = {
-    "hp8663a": (_make_hp8663a, DEFAULT_HP_8663A_SIG_GEN_RESOURCE),
-    "rssmb100a": (_make_rs_smb100a, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE),
-}
-
-
-def make_siggen(name, resource_manager, resource_name=None):
-    """
-    Makes a signal generator by name.
-
-    Args:
-        name (str): a key of SIGGENS
-        resource_manager (pyvisa.ResourceManager): the resource manager
-        resource_name (str): VISA resource, or None for the default
-
-    Returns:
-        the signal generator
-    """
-    (factory, default_resource_name) = SIGGENS[name]
-    return factory(resource_manager, resource_name or default_resource_name)
+# TIA-603 standard test modulation: 1 kHz at 60% of the maximum
+# permissible deviation, which is 5 kHz for 25 kHz channels.
+DEFAULT_MOD_RATE_HZ = 1000.0
+DEFAULT_DEVIATION_HZ = 3000.0
 
 
 def _summarize(readings):
@@ -112,11 +81,41 @@ def _open_keithley(resource_manager, resource_name, hpf_cutoff, lpf_cutoff):
     return meter
 
 
+def _fm_settings(args):
+    """
+    Resolves the FM to configure from the command line.
+
+    Args:
+        args (argparse.Namespace): the parsed arguments
+
+    Returns:
+        (float, float): modulation rate and deviation in Hz, or
+                        (None, None) to leave the front panel's
+                        modulation alone
+
+    Raises:
+        ValueError: if the arguments conflict
+    """
+    if args.modulation_from_front_panel:
+        if args.mod_rate is not None or args.deviation is not None:
+            raise ValueError(
+                "--mod-rate and --deviation conflict with --modulation-from-front-panel"
+            )
+        return (None, None)
+    return (
+        DEFAULT_MOD_RATE_HZ if args.mod_rate is None else args.mod_rate,
+        DEFAULT_DEVIATION_HZ if args.deviation is None else args.deviation,
+    )
+
+
 def run(
     source_class,
     source_args,
-    siggen_name,
+    siggen_class,
     siggen_resource_name,
+    carrier_Hz,
+    mod_rate_Hz,
+    deviation_Hz,
     keithley_resource_name,
     output_path,
 ):
@@ -124,7 +123,9 @@ def run(
     lpf_cutoff = 4000.0
 
     rm = pyvisa.ResourceManager("@py")
-    siggen_resource = make_siggen(siggen_name, rm, siggen_resource_name)
+    siggen_resource = siggen_class(
+        rm, siggen_resource_name or siggen_class.default_resource
+    )
 
     keithley_meter = None
     if keithley_resource_name:
@@ -140,101 +141,109 @@ def run(
 
     data = []
 
-    with siggen_resource as siggen:
-        try:
-            for power_dBm in np.linspace(-125, -95, 51):
-                print(f"{power_dBm:6.3f}", end="")
-                sys.stdout.flush()
+    # SINAD is measured against the tone the generator is modulating with.
+    # With front-panel modulation that rate is unknown, so assume the
+    # TIA-603 tone.
+    tone_frequency = DEFAULT_MOD_RATE_HZ if mod_rate_Hz is None else mod_rate_Hz
 
-                siggen.set_power(power_dBm)
-                siggen.set_output(True)
+    powers_dBm = np.linspace(-125, -95, 51)
+    with siggen_pkg.opened(siggen_resource) as siggen:
+        siggen.set_frequency(carrier_Hz)
+        if mod_rate_Hz is not None:
+            siggen.set_fm(mod_rate_Hz, deviation_Hz)
+        siggen.set_power(powers_dBm[0])
+        siggen.set_output(True)
+        for power_dBm in powers_dBm:
+            print(f"{power_dBm:6.3f}", end="")
+            sys.stdout.flush()
 
-                with source_class(source_args) as source:
-                    sinad_dB_readings = []
-                    keithley_sinad_dB_readings = []
-                    keithley_freq_Hz_readings = []
-                    for _ in range(128):
-                        samples = source.read()
-                        assert len(samples) == num_samples
+            siggen.set_power(power_dBm)
 
-                        if audio_filter:
-                            if not source.continuous:
-                                audio_filter.reset()
-                            samples = audio_filter(samples)
+            with source_class(source_args) as source:
+                sinad_dB_readings = []
+                keithley_sinad_dB_readings = []
+                keithley_freq_Hz_readings = []
+                for _ in range(128):
+                    samples = source.read()
+                    assert len(samples) == num_samples
 
-                        (sinad, _) = sinad_pkg.measure(
-                            samples, sample_frequency, TONE_FREQUENCY_HZ
-                        )
-                        sinad_dB_readings.append(sinad)
+                    if audio_filter:
+                        if not source.continuous:
+                            audio_filter.reset()
+                        samples = audio_filter(samples)
 
-                        if keithley_meter is None:
-                            continue
-
-                        keithley_sinad_dB = float(keithley_meter.query(":READ?"))
-                        if keithley_sinad_dB > 1e6:
-                            keithley_sinad_dB = float("nan")
-                        keithley_sinad_dB_readings.append(keithley_sinad_dB)
-
-                        keithley_freq_Hz = float(
-                            keithley_meter.query(":SENS:DIST:FREQ?")
-                        )
-                        if keithley_freq_Hz > 1e6:
-                            keithley_freq_Hz = float("nan")
-                        keithley_freq_Hz_readings.append(keithley_freq_Hz)
-
-                    (sinad_mean_dB, sinad_std_dB, sinad_n) = _summarize(
-                        sinad_dB_readings
+                    (sinad, _) = sinad_pkg.measure(
+                        samples, sample_frequency, tone_frequency
                     )
-                    (
-                        keithley_sinad_mean_dB,
-                        keithley_sinad_std_dB,
-                        keithley_sinad_n,
-                    ) = _summarize(keithley_sinad_dB_readings)
-                    (keithley_freq_mean_Hz, keithley_freq_std_Hz, _) = _summarize(
-                        keithley_freq_Hz_readings
-                    )
+                    sinad_dB_readings.append(sinad)
 
+                    if keithley_meter is None:
+                        continue
+
+                    keithley_sinad_dB = float(keithley_meter.query(":READ?"))
+                    if keithley_sinad_dB > 1e6:
+                        keithley_sinad_dB = float("nan")
+                    keithley_sinad_dB_readings.append(keithley_sinad_dB)
+
+                    keithley_freq_Hz = float(keithley_meter.query(":SENS:DIST:FREQ?"))
+                    if keithley_freq_Hz > 1e6:
+                        keithley_freq_Hz = float("nan")
+                    keithley_freq_Hz_readings.append(keithley_freq_Hz)
+
+                (sinad_mean_dB, sinad_std_dB, sinad_n) = _summarize(sinad_dB_readings)
+                (
+                    keithley_sinad_mean_dB,
+                    keithley_sinad_std_dB,
+                    keithley_sinad_n,
+                ) = _summarize(keithley_sinad_dB_readings)
+                (keithley_freq_mean_Hz, keithley_freq_std_Hz, _) = _summarize(
+                    keithley_freq_Hz_readings
+                )
+
+                print(
+                    f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
+                    end="",
+                )
+                if keithley_meter is not None:
                     print(
-                        f" sinad={sinad_mean_dB:10.3f} dB std={sinad_std_dB:10.3f} dB",
+                        f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
+                        f" keithley_std={keithley_sinad_std_dB:10.3f}",
                         end="",
                     )
-                    if keithley_meter is not None:
-                        print(
-                            f" keithley_sinad={keithley_sinad_mean_dB:10.3f} dB"
-                            f" keithley_std={keithley_sinad_std_dB:10.3f}",
-                            end="",
-                        )
-                        print(
-                            f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
-                            f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
-                            end="",
-                        )
-                    # Invalid readings are dropped from the means, so say
-                    # so; the counts are not carried in the CSV.
-                    discarded = (len(sinad_dB_readings) - sinad_n) + (
-                        len(keithley_sinad_dB_readings) - keithley_sinad_n
+                    print(
+                        f" keithley_freq={keithley_freq_mean_Hz:10.3f} Hz"
+                        f" keithley_std={keithley_freq_std_Hz:10.3f} Hz",
+                        end="",
                     )
-                    if discarded:
-                        print(f" ({discarded} readings discarded)", end="")
-                    print()
-                    row = {
-                        "power_dBm": power_dBm,
-                        "sinad_mean_dB": sinad_mean_dB,
-                        "sinad_std_dB": sinad_std_dB,
-                    }
-                    if keithley_meter is not None:
-                        row.update(
-                            {
-                                "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
-                                "keithley_sinad_std_dB": keithley_sinad_std_dB,
-                                "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
-                                "keithley_freq_std_Hz": keithley_freq_std_Hz,
-                            }
-                        )
-                    data.append(row)
-        finally:
-            # Never leave the generator transmitting, however we leave.
-            siggen.set_output(False)
+                # Invalid readings are dropped from the means, so say
+                # so; the counts are not carried in the CSV.
+                discarded = (len(sinad_dB_readings) - sinad_n) + (
+                    len(keithley_sinad_dB_readings) - keithley_sinad_n
+                )
+                if discarded:
+                    print(f" ({discarded} readings discarded)", end="")
+                print()
+                row = {
+                    "power_dBm": power_dBm,
+                    "sinad_mean_dB": sinad_mean_dB,
+                    "sinad_std_dB": sinad_std_dB,
+                    "carrier_Hz": carrier_Hz,
+                    "mod_rate_Hz": mod_rate_Hz,
+                    "deviation_Hz": deviation_Hz,
+                    "modulation": (
+                        "front_panel" if mod_rate_Hz is None else "configured"
+                    ),
+                }
+                if keithley_meter is not None:
+                    row.update(
+                        {
+                            "keithley_sinad_mean_dB": keithley_sinad_mean_dB,
+                            "keithley_sinad_std_dB": keithley_sinad_std_dB,
+                            "keithley_freq_mean_Hz": keithley_freq_mean_Hz,
+                            "keithley_freq_std_Hz": keithley_freq_std_Hz,
+                        }
+                    )
+                data.append(row)
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
     print(f"wrote {output_path}")
@@ -242,10 +251,32 @@ def run(
 
 def main():
     registry = source_pkg.load_sources()
-    for line in source_pkg.describe_unavailable_backends():
+    siggen_registry = siggen_pkg.load_siggens()
+    for line in (
+        source_pkg.describe_unavailable_backends()
+        + siggen_pkg.describe_unavailable_backends()
+    ):
         print(f"note: {line}", file=sys.stderr)
 
-    parser = argparse.ArgumentParser(description="SINAD Meter")
+    # Plugin files are loaded before the main parser is built, so that
+    # -G can offer them.
+    plugin_parser = argparse.ArgumentParser(add_help=False)
+    plugin_parser.add_argument(
+        "--siggen-plugin",
+        action="append",
+        default=[],
+        dest="siggen_plugins",
+        metavar="FILE.py:CLASS",
+        help="Loads a signal generator from a Python file.  May be repeated.",
+    )
+    (plugin_args, _) = plugin_parser.parse_known_args()
+    for spec in plugin_args.siggen_plugins:
+        try:
+            siggen_pkg.load_plugin_file(spec)
+        except (ValueError, *siggen_pkg.PLUGIN_ERRORS) as e:
+            plugin_parser.error(f"--siggen-plugin {spec}: {e}")
+
+    parser = argparse.ArgumentParser(description="SINAD Meter", parents=[plugin_parser])
 
     parser.add_argument(
         "-S",
@@ -263,7 +294,7 @@ def main():
     parser.add_argument(
         "-G",
         "--siggen",
-        choices=sorted(SIGGENS),
+        choices=sorted(s.name for s in siggen_registry),
         default=DEFAULT_SIGGEN,
         help=f"Selects signal generator (default: {DEFAULT_SIGGEN}).",
     )
@@ -272,6 +303,32 @@ def main():
         dest="siggen_resource",
         help="VISA resource of the signal generator "
         "(default: depends on the generator)",
+    )
+    parser.add_argument(
+        "-f",
+        "--frequency",
+        type=float,
+        help="carrier frequency, in Hz (required)",
+    )
+    parser.add_argument(
+        "--mod-rate",
+        dest="mod_rate",
+        type=float,
+        help=f"FM rate, in Hz (default: {DEFAULT_MOD_RATE_HZ:g} Hz)",
+    )
+    parser.add_argument(
+        "--deviation",
+        type=float,
+        help=f"FM deviation, in Hz (default: {DEFAULT_DEVIATION_HZ:g} Hz, "
+        "60%% of 5 kHz for 25 kHz channels; use 1500 for 12.5 kHz)",
+    )
+    parser.add_argument(
+        "--modulation-from-front-panel",
+        action="store_true",
+        dest="modulation_from_front_panel",
+        help="Leave modulation as set on the generator's front panel, for "
+        "generators that cannot set FM.  Recorded as such in the CSV.  SINAD "
+        f"is then measured against a {DEFAULT_MOD_RATE_HZ:g} Hz tone.",
     )
     parser.add_argument(
         "-K",
@@ -323,12 +380,30 @@ def main():
         return
     source_args = source_parser.parse_args(args=unparsed_args)
 
+    # Checked here rather than with required=True so that --help-source
+    # works without it.
+    if args.frequency is None:
+        parser.error("--frequency is required")
+    try:
+        (mod_rate_Hz, deviation_Hz) = _fm_settings(args)
+    except ValueError as e:
+        parser.error(str(e))
+    if mod_rate_Hz is None:
+        print(
+            "warning: modulation is whatever the front panel was left at; "
+            f"SINAD assumes a {DEFAULT_MOD_RATE_HZ:g} Hz tone",
+            file=sys.stderr,
+        )
+
     output_path = args.output or f"auto_sinad_{args.siggen}.csv"
     run(
         source_class,
         source_args,
-        args.siggen,
+        siggen_registry.get(args.siggen),
         args.siggen_resource,
+        args.frequency,
+        mod_rate_Hz,
+        deviation_Hz,
         args.keithley_resource if args.keithley else None,
         output_path,
     )

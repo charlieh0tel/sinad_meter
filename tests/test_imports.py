@@ -10,6 +10,7 @@ import pathlib
 
 import pytest
 
+import siggen
 import source
 
 ROOT = pathlib.Path(__file__).parent.parent
@@ -20,7 +21,8 @@ ROOT = pathlib.Path(__file__).parent.parent
 MODULES = sorted(
     p.stem
     for p in ROOT.glob("*.py")
-    if p.stem not in source.BACKEND_MODULES and not p.stem.startswith("_")
+    if p.stem not in source.BACKEND_MODULES + siggen.BACKEND_MODULES
+    and not p.stem.startswith("_")
 )
 
 
@@ -47,4 +49,10 @@ def test_every_backend_loads():
     # as not checked rather than as passing.
     if unusable:
         pytest.skip("; ".join(f"{name}: {e}" for name, e in sorted(unusable.items())))
+    assert [s.name for s in registry]
+
+
+def test_every_siggen_backend_loads():
+    registry = siggen.load_siggens()
+    assert not siggen.UNAVAILABLE_BACKENDS, siggen.describe_unavailable_backends()
     assert [s.name for s in registry]

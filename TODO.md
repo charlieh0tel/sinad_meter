@@ -15,10 +15,11 @@
   update it along with this note.
 
 - `sinad.measure()` looks for the test tone within 10% of where it
-  should be (1 kHz in `auto_sinad.py`, `--tone` in `sinad_meter.py`), so
-  a bigger spur no longer becomes the signal.  But when the tone is
-  absent or outside that window it still returns a plausible number,
-  measuring whatever peak is there.  Flag those records instead.
+  should be (the FM rate in `auto_sinad.py`, `--tone` in
+  `sinad_meter.py`), so a bigger spur no longer becomes the signal.  But
+  when the tone is absent or outside that window it still returns a
+  plausible number, measuring whatever peak is there.  Flag those
+  records instead.
 
 ## Robustness
 
@@ -42,10 +43,13 @@ least the following are settled.  Section numbers are from TIA-603-E
 and were read from a secondary source, so check them against the real
 standard before relying on any of it.
 
-- The generator is never configured for the standard test signal:
-  §1.3.3.5 wants 1 kHz modulation at 60% of maximum permissible
-  deviation.  `auto_sinad.py` sets only power, so carrier frequency,
-  deviation, and FM enable depend on undocumented front-panel state.
+- FM on the HP 8663A (`set_fm` in the ee-instruments driver) was
+  written from the Operation and Calibration Manual, 08663-90069
+  (`third_party/9018-05372.pdf`), and has not been tried on an
+  instrument.  Check on one: the deviation and rate actually produced,
+  that a rejected entry raises rather than sweeping, and that no other
+  modulation was left on from the front panel (neither generator turns
+  AM or pulse off).
 
 - §2.1.4 wants rated audio output established first, and the reported
   sensitivity to be the worse of the 12 dB SINAD point and the point
