@@ -24,16 +24,16 @@ MODULES = sorted(
 )
 
 
-def test_there_are_modules_to_import():
+def test_there_are_modules_to_import() -> None:
     assert MODULES
 
 
 @pytest.mark.parametrize("name", MODULES)
-def test_module_imports(name):
+def test_module_imports(name: str) -> None:
     importlib.import_module(name)
 
 
-def test_every_backend_loads():
+def test_every_backend_loads() -> None:
     registry = source.load_sources()
     unusable = {
         name: e

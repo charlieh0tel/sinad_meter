@@ -23,3 +23,13 @@ repos:
         language: system
         types_or: [python, pyi]
         require_serial: true
+
+      # Whole-project check: mypy needs every module to resolve imports, so
+      # it takes no filenames and runs whenever any Python file changes.
+      - id: mypy
+        name: mypy
+        entry: uv run --frozen mypy
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        require_serial: true

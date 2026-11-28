@@ -1,5 +1,7 @@
 import importlib
 import sys
+from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -18,10 +20,12 @@ raise {error}("Error initializing PortAudio: PulseAudio_Initialize: "
 
 
 @pytest.fixture
-def import_with_sounddevice(tmp_path, monkeypatch):
+def import_with_sounddevice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Callable[[str], None]:
     """Imports source_portaudio fresh, with a sounddevice that raises error."""
 
-    def run(error):
+    def run(error: str) -> None:
         (tmp_path / "sounddevice.py").write_text(
             FAILING_SOUNDDEVICE.format(error=error)
         )
@@ -33,11 +37,15 @@ def import_with_sounddevice(tmp_path, monkeypatch):
     return run
 
 
-def test_portaudio_that_cannot_start_is_unusable(import_with_sounddevice):
+def test_portaudio_that_cannot_start_is_unusable(
+    import_with_sounddevice: Callable[[str], None],
+) -> None:
     with pytest.raises(source.UnusableBackendError, match="PortAudio could not start"):
         import_with_sounddevice("PortAudioError")
 
 
-def test_other_import_errors_propagate(import_with_sounddevice):
+def test_other_import_errors_propagate(
+    import_with_sounddevice: Callable[[str], None],
+) -> None:
     with pytest.raises(ValueError):
         import_with_sounddevice("ValueError")

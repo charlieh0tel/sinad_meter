@@ -2,6 +2,8 @@
 
 import argparse
 import sys
+from collections.abc import Callable, Sequence
+from typing import TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -22,23 +24,35 @@ DEFAULT_SIGGEN = "hp8663a"
 TONE_FREQUENCY_HZ = 1000.0
 
 
-def _make_hp8663a(_resource_manager, resource_name):
+Siggen: TypeAlias = hp_8662a.HP8663A | rs_smb100a.RhodeSchwarzSMB100A
+SiggenFactory: TypeAlias = Callable[[pyvisa.ResourceManager, str], Siggen]
+
+
+def _make_hp8663a(
+    _resource_manager: pyvisa.ResourceManager, resource_name: str
+) -> Siggen:
     return hp_8662a.HP8663A(resource_name)
 
 
-def _make_rs_smb100a(resource_manager, resource_name):
+def _make_rs_smb100a(
+    resource_manager: pyvisa.ResourceManager, resource_name: str
+) -> Siggen:
     return rs_smb100a.RhodeSchwarzSMB100A(resource_manager, resource_name)
 
 
 # Signal generator name -> (factory, default VISA resource).  The two
 # drivers take different arguments, hence the factories.
-SIGGENS = {
+SIGGENS: dict[str, tuple[SiggenFactory, str]] = {
     "hp8663a": (_make_hp8663a, DEFAULT_HP_8663A_SIG_GEN_RESOURCE),
     "rssmb100a": (_make_rs_smb100a, DEFAULT_RS_SMB100A_SIG_GEN_RESOURCE),
 }
 
 
-def make_siggen(name, resource_manager, resource_name=None):
+def make_siggen(
+    name: str,
+    resource_manager: pyvisa.ResourceManager,
+    resource_name: str | None = None,
+) -> Siggen:
     """
     Makes a signal generator by name.
 
@@ -54,7 +68,7 @@ def make_siggen(name, resource_manager, resource_name=None):
     return factory(resource_manager, resource_name or default_resource_name)
 
 
-def _summarize(readings):
+def _summarize(readings: Sequence[float]) -> tuple[float, float, int]:
     """
     Summarizes a set of readings, ignoring those that were invalid.
 
@@ -69,14 +83,19 @@ def _summarize(readings):
                              readings were valid.  Mean and standard
                              deviation are NaN if none were.
     """
-    readings = np.asarray(readings, dtype=float)
-    valid = readings[~np.isnan(readings)]
+    values = np.asarray(readings, dtype=float)
+    valid = values[~np.isnan(values)]
     if valid.size == 0:
         return (float("nan"), float("nan"), 0)
-    return (valid.mean(), valid.std(), valid.size)
+    return (float(valid.mean()), float(valid.std()), valid.size)
 
 
-def _open_keithley(resource_manager, resource_name, hpf_cutoff, lpf_cutoff):
+def _open_keithley(
+    resource_manager: pyvisa.ResourceManager,
+    resource_name: str,
+    hpf_cutoff: float | None,
+    lpf_cutoff: float | None,
+) -> keithley_2015.Keithley2015:
     """
     Opens and configures the Keithley 2015 as a SINAD reference.
 
@@ -89,7 +108,12 @@ def _open_keithley(resource_manager, resource_name, hpf_cutoff, lpf_cutoff):
     Returns:
         keithley_2015.Keithley2015: the opened meter
     """
-    meter = keithley_2015.Keithley2015(resource_manager, resource_name).open()
+    # The driver is untyped, so open() would otherwise be Any.
+    meter: keithley_2015.Keithley2015 = keithley_2015.Keithley2015(
+        resource_manager, resource_name
+    ).open()
+    # Set by open(), but declared Optional for the closed state.
+    assert meter.inst is not None
     meter.inst.timeout = 10e3
     meter.reset()
     meter.write(":SENS:FUNC 'dist'")
@@ -113,13 +137,13 @@ def _open_keithley(resource_manager, resource_name, hpf_cutoff, lpf_cutoff):
 
 
 def run(
-    source_class,
-    source_args,
-    siggen_name,
-    siggen_resource_name,
-    keithley_resource_name,
-    output_path,
-):
+    source_class: type[source_pkg.Source],
+    source_args: argparse.Namespace,
+    siggen_name: str,
+    siggen_resource_name: str | None,
+    keithley_resource_name: str | None,
+    output_path: str,
+) -> None:
     hpf_cutoff = 200.0
     lpf_cutoff = 4000.0
 
@@ -138,7 +162,7 @@ def run(
 
     audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
 
-    data = []
+    data: list[dict[str, float]] = []
 
     with siggen_resource as siggen:
         try:
@@ -150,9 +174,9 @@ def run(
                 siggen.set_output(True)
 
                 with source_class(source_args) as source:
-                    sinad_dB_readings = []
-                    keithley_sinad_dB_readings = []
-                    keithley_freq_Hz_readings = []
+                    sinad_dB_readings: list[float] = []
+                    keithley_sinad_dB_readings: list[float] = []
+                    keithley_freq_Hz_readings: list[float] = []
                     for _ in range(128):
                         samples = source.read()
                         assert len(samples) == num_samples
@@ -240,7 +264,7 @@ def run(
     print(f"wrote {output_path}")
 
 
-def main():
+def main() -> None:
     registry = source_pkg.load_sources()
     for line in source_pkg.describe_unavailable_backends():
         print(f"note: {line}", file=sys.stderr)

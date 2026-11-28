@@ -6,6 +6,7 @@
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 import scipy.io
 
@@ -24,26 +25,26 @@ MATLAB_SINAD_DB = {
 }
 
 
-def _load(name):
+def _load(name: str) -> tuple[npt.NDArray[np.float64], float]:
     data = scipy.io.loadmat(str(DATA / f"{name}.mat"))
     signal = data["x"].flatten() + data["noise"].flatten()
     return (signal, float(data["Fs"].flatten()[0]))
 
 
-def _to_radio_sinad(snr_dB):
+def _to_radio_sinad(snr_dB: float) -> float:
     """The conversion under test, written out independently."""
-    return 10.0 * np.log10(1.0 + 10.0 ** (snr_dB / 10.0))
+    return float(10.0 * np.log10(1.0 + 10.0 ** (snr_dB / 10.0)))
 
 
 @pytest.mark.parametrize(("name", "expected_dB"), MATLAB_SINAD_DB.items())
-def test_vendored_matches_matlab(name, expected_dB):
+def test_vendored_matches_matlab(name: str, expected_dB: float) -> None:
     (signal, sample_frequency) = _load(name)
     (got_dB, _) = pysnr.sinad_signal(signal, fs=sample_frequency)
     assert got_dB == pytest.approx(expected_dB, abs=0.01)
 
 
 @pytest.mark.parametrize("name", MATLAB_SINAD_DB)
-def test_measure_is_the_converted_estimate(name):
+def test_measure_is_the_converted_estimate(name: str) -> None:
     (signal, sample_frequency) = _load(name)
     (snr_dB, _) = pysnr.sinad_signal(signal, fs=sample_frequency)
     (got_dB, _) = sinad.measure(signal, sample_frequency)
@@ -54,7 +55,7 @@ def test_measure_is_the_converted_estimate(name):
     ("noise_power_ratio_dB", "expected_dB"),
     [(0.0, 3.01), (6.0, 6.97), (12.0, 12.27), (20.0, 20.04)],
 )
-def test_known_signal_to_noise(noise_power_ratio_dB, expected_dB):
+def test_known_signal_to_noise(noise_power_ratio_dB: float, expected_dB: float) -> None:
     """A tone in noise of known power has a SINAD we can write down."""
     sample_frequency = 48_000
     n = sample_frequency
@@ -68,7 +69,7 @@ def test_known_signal_to_noise(noise_power_ratio_dB, expected_dB):
 
 
 @pytest.mark.parametrize("harmonic_amplitude", [0.1, 0.02, 0.005])
-def test_known_harmonic_distortion(harmonic_amplitude):
+def test_known_harmonic_distortion(harmonic_amplitude: float) -> None:
     """
     A tone plus one harmonic and no noise.
 
@@ -86,7 +87,7 @@ def test_known_harmonic_distortion(harmonic_amplitude):
     assert got_dB == pytest.approx(expected_dB, abs=0.5)
 
 
-def test_never_negative_without_a_tone():
+def test_never_negative_without_a_tone() -> None:
     """
     The radio definition is bounded below by 0 dB.
 
@@ -102,7 +103,7 @@ def test_never_negative_without_a_tone():
     assert adc_dB < -10.0
 
 
-def test_a_spur_larger_than_the_tone_is_not_the_signal():
+def test_a_spur_larger_than_the_tone_is_not_the_signal() -> None:
     """
     The modulation is 1 kHz; a bigger spur elsewhere is noise.
 

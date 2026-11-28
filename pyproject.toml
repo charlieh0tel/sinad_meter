@@ -24,9 +24,12 @@ package = false
 
 [dependency-groups]
 dev = [
+    "mypy>=2.4.1",
+    "pandas-stubs>=3.1.0.261029",
     "prek",
     "pytest>=9.1.1",
     "ruff",
+    "scipy-stubs>=1.17.1.5",
 ]
 
 [tool.pytest.ini_options]
@@ -45,3 +48,24 @@ filterwarnings = [
     # 3.14 prefixes the message with the offending escape, e.g. "\d" is an ...
     "ignore:.*invalid escape sequence::.*/vxi11/vxi11",
 ]
+
+[tool.mypy]
+strict = true
+# Check against the requires-python floor, whatever interpreter runs mypy.
+python_version = "3.11"
+files = ["."]
+# Same exclusions as ruff.toml: vendored/pysnr stays close to upstream and
+# instruments is the ee-instruments submodule.  Both are still followed for
+# the types of what they export, but their own errors are not reported here.
+exclude = ["^instruments/", "^vendored/"]
+untyped_calls_exclude = ["vendored", "instruments"]
+
+[[tool.mypy.overrides]]
+module = ["vendored.*", "instruments.*"]
+follow_imports = "silent"
+implicit_reexport = true
+
+# Neither ships type information.
+[[tool.mypy.overrides]]
+module = ["pydwf", "pydwf.*", "sounddevice"]
+ignore_missing_imports = true
