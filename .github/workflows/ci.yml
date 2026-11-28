@@ -29,3 +29,19 @@ jobs:
       # environment and nothing else -- none of the runner image's own
       # packages, which is why the shared workflow leaves it off by default.
       audit-command: pip-audit
+
+  # python-ci.yml has no type-check step, and borrowing its lint-command
+  # for mypy would drop ruff check.  One Python is enough: mypy checks
+  # against requires-python's floor whatever interpreter runs it.
+  mypy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # auto_sinad imports the instruments submodule's drivers.
+          submodules: recursive
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - run: uv run --frozen mypy
