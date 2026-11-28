@@ -1,4 +1,5 @@
 import importlib
+from collections.abc import Iterable, Mapping, MutableMapping
 
 #
 # A backend is a module that registers itself in some registry when
@@ -8,7 +9,9 @@ import importlib
 #
 
 
-def import_backends(module_names, unavailable):
+def import_backends(
+    module_names: Iterable[str], unavailable: MutableMapping[str, Exception]
+) -> None:
     """
     Imports backend modules, each of which registers itself.
 
@@ -30,7 +33,7 @@ def import_backends(module_names, unavailable):
             unavailable[module_name] = e
 
 
-def describe_unavailable(unavailable):
+def describe_unavailable(unavailable: Mapping[str, Exception]) -> list[str]:
     """
     Describes the backends that could not be loaded, for use in messages.
 

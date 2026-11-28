@@ -1,3 +1,5 @@
+import pyvisa
+
 import siggen
 from instruments import hp_8662a
 
@@ -8,30 +10,32 @@ class HP8663A:
     pretty_name = "HP 8663A"
     default_resource = "TCPIP::e5810a::gpib0,25::INSTR"
 
-    def __init__(self, _resource_manager, resource_name):
+    def __init__(
+        self, _resource_manager: pyvisa.ResourceManager, resource_name: str
+    ) -> None:
         # The driver speaks VXI-11 itself rather than through pyvisa.
         self.driver = hp_8662a.HP8663A(resource_name)
         self.output_on = False
 
-    def open(self):
+    def open(self) -> None:
         self.driver.open()
 
-    def close(self):
+    def close(self) -> None:
         self.driver.close()
 
-    def set_frequency(self, frequency_Hz):
+    def set_frequency(self, frequency_Hz: float) -> None:
         self.driver.set_frequency(frequency_Hz)
 
-    def set_fm(self, rate_Hz, deviation_Hz):
+    def set_fm(self, rate_Hz: float, deviation_Hz: float) -> None:
         self.driver.set_fm(rate_Hz, deviation_Hz)
 
-    def set_power(self, power_dBm):
+    def set_power(self, power_dBm: float) -> None:
         self.driver.set_power(power_dBm)
         # The driver only sends the level when the output is turned on.
         if self.output_on:
             self.driver.set_output(True)
 
-    def set_output(self, on):
+    def set_output(self, on: bool) -> None:
         self.driver.set_output(on)
         self.output_on = on
 

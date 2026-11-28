@@ -52,7 +52,7 @@ def test_every_backend_loads() -> None:
     assert [s.name for s in registry]
 
 
-def test_every_siggen_backend_loads():
+def test_every_siggen_backend_loads() -> None:
     registry = siggen.load_siggens()
     assert not siggen.UNAVAILABLE_BACKENDS, siggen.describe_unavailable_backends()
     assert [s.name for s in registry]

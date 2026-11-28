@@ -78,7 +78,7 @@ class UnusableBackendError(ImportError):
 BACKEND_MODULES = ("source_digilent", "source_portaudio")
 
 # Backends whose import failed, as module name -> the exception.
-UNAVAILABLE_BACKENDS: dict[str, ImportError | OSError] = {}
+UNAVAILABLE_BACKENDS: dict[str, Exception] = {}
 
 
 def load_sources() -> SourceRegistry:

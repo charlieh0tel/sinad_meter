@@ -92,7 +92,9 @@ def _open_keithley(
     return meter
 
 
-def _fm_settings(args):
+def _fm_settings(
+    args: argparse.Namespace,
+) -> tuple[float, float] | tuple[None, None]:
     """
     Resolves the FM to configure from the command line.
 
@@ -122,7 +124,7 @@ def _fm_settings(args):
 def run(
     source_class: type[source_pkg.Source],
     source_args: argparse.Namespace,
-    siggen_class,
+    siggen_class: siggen_pkg.SigGenClass,
     siggen_resource_name: str | None,
     carrier_Hz: float,
     mod_rate_Hz: float | None,
@@ -150,7 +152,7 @@ def run(
 
     audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
 
-    data: list[dict[str, float]] = []
+    data: list[dict[str, float | str | None]] = []
 
     # SINAD is measured against the tone the generator is modulating with.
     # With front-panel modulation that rate is unknown, so assume the
@@ -161,6 +163,8 @@ def run(
     with siggen_pkg.opened(siggen_resource) as siggen:
         siggen.set_frequency(carrier_Hz)
         if mod_rate_Hz is not None:
+            # _fm_settings() sets both or neither.
+            assert deviation_Hz is not None
             siggen.set_fm(mod_rate_Hz, deviation_Hz)
         siggen.set_power(powers_dBm[0])
         siggen.set_output(True)

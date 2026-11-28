@@ -15,23 +15,23 @@ class PrintSigGen:
     pretty_name = "Print (no hardware)"
     default_resource = "none"
 
-    def __init__(self, _resource_manager, resource_name):
+    def __init__(self, _resource_manager: object, resource_name: str) -> None:
         self.resource_name = resource_name
 
-    def open(self):
+    def open(self) -> None:
         print(f"[{self.name}] open {self.resource_name}")
 
-    def close(self):
+    def close(self) -> None:
         print(f"[{self.name}] close")
 
-    def set_frequency(self, frequency_Hz):
+    def set_frequency(self, frequency_Hz: float) -> None:
         print(f"[{self.name}] carrier {frequency_Hz:g} Hz")
 
-    def set_fm(self, rate_Hz, deviation_Hz):
+    def set_fm(self, rate_Hz: float, deviation_Hz: float) -> None:
         print(f"[{self.name}] FM {rate_Hz:g} Hz rate, {deviation_Hz:g} Hz deviation")
 
-    def set_power(self, power_dBm):
+    def set_power(self, power_dBm: float) -> None:
         print(f"[{self.name}] power {power_dBm:g} dBm")
 
-    def set_output(self, on):
+    def set_output(self, on: bool) -> None:
         print(f"[{self.name}] output {'on' if on else 'off'}")

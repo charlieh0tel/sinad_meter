@@ -2,7 +2,10 @@ import contextlib
 import importlib.metadata
 import importlib.util
 import pathlib
+from collections.abc import Generator
+from typing import Protocol, TypeVar
 
+import pyvisa
 import registries
 import registries.errors
 
@@ -33,6 +36,37 @@ import backends
 # Use it through opened(), which owns turning the output off.
 #
 
+
+class SigGen(Protocol):
+    """A signal generator instance; see the contract above."""
+
+    def open(self) -> None: ...
+
+    def close(self) -> None: ...
+
+    def set_frequency(self, frequency_Hz: float) -> None: ...
+
+    def set_fm(self, rate_Hz: float, deviation_Hz: float) -> None: ...
+
+    def set_power(self, power_dBm: float) -> None: ...
+
+    def set_output(self, on: bool) -> None: ...
+
+
+class SigGenClass(Protocol):
+    """A signal generator class, which is what the registry holds."""
+
+    api_version: int
+    name: str
+    pretty_name: str
+    default_resource: str
+
+    def __call__(
+        self, resource_manager: pyvisa.ResourceManager, resource_name: str, /
+    ) -> SigGen: ...
+
+
+SigGenT = TypeVar("SigGenT", bound=SigGen)
 
 API_VERSION = 1
 
@@ -69,14 +103,14 @@ PLUGIN_ERRORS = (
 )
 
 
-class SigGenRegistry(registries.Registry):
+class SigGenRegistry(registries.Registry[SigGenClass]):
     lookup_attrs = ("name",)
 
 
 SIGGEN_REGISTRY = SigGenRegistry()
 
 
-def register(siggen_class):
+def register(siggen_class: SigGenClass) -> None:
     """
     Checks a signal generator class against the contract and registers it.
 
@@ -103,10 +137,10 @@ def register(siggen_class):
 BACKEND_MODULES = ("siggen_hp8663a", "siggen_rs_smb100a")
 
 # Backends and plugins that failed to load, as name -> the exception.
-UNAVAILABLE_BACKENDS = {}
+UNAVAILABLE_BACKENDS: dict[str, Exception] = {}
 
 
-def load_siggens():
+def load_siggens() -> SigGenRegistry:
     """
     Imports the built-in signal generators, then any installed plugins.
 
@@ -120,7 +154,7 @@ def load_siggens():
     backends.import_backends(BACKEND_MODULES, UNAVAILABLE_BACKENDS)
     for entry_point in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
         try:
-            siggen_class = entry_point.load()
+            siggen_class: SigGenClass = entry_point.load()
             if siggen_class not in SIGGEN_REGISTRY:
                 register(siggen_class)
         except PLUGIN_ERRORS as e:
@@ -128,7 +162,7 @@ def load_siggens():
     return SIGGEN_REGISTRY
 
 
-def load_plugin_file(spec):
+def load_plugin_file(spec: str) -> SigGenClass:
     """
     Loads a signal generator class from a Python file and registers it.
 
@@ -148,16 +182,16 @@ def load_plugin_file(spec):
     module_spec = importlib.util.spec_from_file_location(
         f"siggen_plugin_{pathlib.Path(path).stem}", path
     )
-    if module_spec is None:
+    if module_spec is None or module_spec.loader is None:
         raise ImportError(f"{path} is not a Python file")
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
-    siggen_class = getattr(module, class_name)
+    siggen_class: SigGenClass = getattr(module, class_name)
     register(siggen_class)
     return siggen_class
 
 
-def describe_unavailable_backends():
+def describe_unavailable_backends() -> list[str]:
     """
     Describes the backends that failed to import, for use in messages.
 
@@ -168,7 +202,7 @@ def describe_unavailable_backends():
 
 
 @contextlib.contextmanager
-def opened(siggen):
+def opened(siggen: SigGenT) -> Generator[SigGenT, None, None]:
     """
     Opens a signal generator for the duration of a with block.
 
