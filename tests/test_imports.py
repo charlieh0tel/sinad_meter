@@ -54,5 +54,8 @@ def test_every_backend_loads() -> None:
 
 def test_every_siggen_backend_loads() -> None:
     registry = siggen.load_siggens()
-    assert not siggen.UNAVAILABLE_BACKENDS, siggen.describe_unavailable_backends()
+    # Installed plugins load too, but a broken one is not this repo's
+    # failure; test_siggen_plugins covers plugin loading.
+    failed = set(siggen.BACKEND_MODULES) & set(siggen.UNAVAILABLE_BACKENDS)
+    assert not failed, siggen.describe_unavailable_backends()
     assert [s.name for s in registry]
