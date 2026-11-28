@@ -1,20 +1,22 @@
 import numpy as np
+import numpy.typing as npt
 import scipy.signal
 
 
 class FirFilter:
-    def __init__(self, taps):
+    def __init__(self, taps: npt.NDArray[np.float64]) -> None:
         self._taps = taps
         self._state = np.zeros(len(taps) - 1)
 
-    def __call__(self, samples):
-        filtered_samples, new_state = scipy.signal.lfilter(
-            self._taps, 1.0, samples, zi=self._state
+    def __call__(self, samples: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+        # lfilter's stubs type a floating input's result as Any.
+        filtered_samples: npt.NDArray[np.floating]
+        filtered_samples, self._state = scipy.signal.lfilter(
+            self._taps, [1.0], samples, zi=self._state
         )
-        self._state = new_state
         return filtered_samples
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Clears the delay line.
 
@@ -24,11 +26,11 @@ class FirFilter:
         """
         self._state = np.zeros(len(self._taps) - 1)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._taps)
 
 
-def make_moving_average_filter(window_length):
+def make_moving_average_filter(window_length: int) -> FirFilter:
     """
     Makes a moving average filter.
 
@@ -42,7 +44,9 @@ def make_moving_average_filter(window_length):
     return FirFilter(taps)
 
 
-def make_fir_lowpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
+def make_fir_lowpass_filter(
+    sample_frequency: float, cutoff_frequency: float, numtaps: int = 101
+) -> FirFilter:
     """
     Makes a linear-phase FIR low-pass filter.
 
@@ -62,7 +66,9 @@ def make_fir_lowpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
     return FirFilter(taps)
 
 
-def make_fir_highpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
+def make_fir_highpass_filter(
+    sample_frequency: float, cutoff_frequency: float, numtaps: int = 101
+) -> FirFilter:
     """
     Makes a linear-phase FIR high-pass filter.
 
@@ -83,8 +89,11 @@ def make_fir_highpass_filter(sample_frequency, cutoff_frequency, numtaps=101):
 
 
 def make_fir_bandpass_filter(
-    sample_frequency, lowcut_frequency, highcut_frequency, numtaps=101
-):
+    sample_frequency: float,
+    lowcut_frequency: float,
+    highcut_frequency: float,
+    numtaps: int = 101,
+) -> FirFilter:
     """
     Makes a linear-phase FIR band-pass filter.
 
@@ -108,7 +117,12 @@ def make_fir_bandpass_filter(
     return FirFilter(taps)
 
 
-def make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff, numtaps=101):
+def make_audio_filter(
+    sample_frequency: float,
+    hpf_cutoff: float | None,
+    lpf_cutoff: float | None,
+    numtaps: int = 101,
+) -> FirFilter | None:
     """
     Makes the filter implied by a pair of optional cutoffs.
 

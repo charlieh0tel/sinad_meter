@@ -1,4 +1,7 @@
+import math
+
 import numpy as np
+import numpy.typing as npt
 
 
 class AutomaticGainControl:
@@ -31,7 +34,7 @@ class AutomaticGainControl:
         target_rms: float,
         smoothing_factor: float = 0.01,
         initial_gain: float = 1.0,
-    ):
+    ) -> None:
         if not 0.0 <= smoothing_factor <= 1.0:
             raise ValueError("smoothing_factor must be between 0 and 1.")
         if target_rms <= 0:
@@ -44,7 +47,7 @@ class AutomaticGainControl:
         self._current_gain = initial_gain
         self._current_power_estimate = (target_rms / initial_gain) ** 2
 
-    def __call__(self, samples: np.ndarray) -> np.ndarray:
+    def __call__(self, samples: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """
         Applies AGC to a batch of samples.
 
@@ -65,7 +68,7 @@ class AutomaticGainControl:
         # Calculate the instantaneous power of the current batch using
         # mean square as power.  Square in floating point: integer
         # samples, such as int16 from an audio device, overflow silently.
-        current_batch_power = np.mean(np.square(samples, dtype=np.float64))
+        current_batch_power = float(np.mean(np.square(samples, dtype=np.float64)))
 
         # Update the internal power estimate using exponential smoothing.
         self._current_power_estimate = (
@@ -75,7 +78,7 @@ class AutomaticGainControl:
 
         # Calculate the required gain based on the smoothed power estimate
         # Ensure power estimate is non-zero before division and sqrt
-        estimated_rms = np.sqrt(max(1e-10, self._current_power_estimate))
+        estimated_rms = math.sqrt(max(1e-10, self._current_power_estimate))
 
         # Calculate the target gain needed to bring the estimated RMS
         # to the target RMS.

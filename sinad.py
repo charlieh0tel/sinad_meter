@@ -3,6 +3,7 @@
 #
 
 import numpy as np
+import numpy.typing as npt
 
 from vendored import pysnr
 
@@ -11,7 +12,11 @@ from vendored import pysnr
 TONE_SEARCH_FRACTION = 0.1
 
 
-def measure(samples, sample_frequency, tone_frequency=None):
+def measure(
+    samples: npt.NDArray[np.floating],
+    sample_frequency: float,
+    tone_frequency: float | None = None,
+) -> tuple[float, float]:
     """
     Measures the SINAD of a record.
 
@@ -56,4 +61,4 @@ def measure(samples, sample_frequency, tone_frequency=None):
     (snr_dB, noise_dB) = pysnr.sinad_signal(
         samples, fs=sample_frequency, fundamental_range=fundamental_range
     )
-    return (10.0 * np.log10(1.0 + 10.0 ** (snr_dB / 10.0)), noise_dB)
+    return (float(10.0 * np.log10(1.0 + 10.0 ** (snr_dB / 10.0))), float(noise_dB))

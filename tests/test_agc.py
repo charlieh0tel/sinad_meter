@@ -1,17 +1,22 @@
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 import agc
 
 
-def _tone(rms, n=4800, dtype=float):
+def _tone(rms: float, n: int = 4800, dtype: npt.DTypeLike = float) -> npt.NDArray[Any]:
     """A sine of the given RMS, a whole number of cycles long."""
     samples = rms * np.sqrt(2) * np.sin(2 * np.pi * np.arange(n) / 48)
-    return samples.astype(dtype)
+    # astype's stubs type a DTypeLike result as Any.
+    tone: npt.NDArray[Any] = samples.astype(dtype)
+    return tone
 
 
-def _rms(samples):
-    return np.sqrt(np.mean(np.asarray(samples, dtype=float) ** 2))
+def _rms(samples: npt.ArrayLike) -> float:
+    return float(np.sqrt(np.mean(np.asarray(samples, dtype=float) ** 2)))
 
 
 @pytest.mark.parametrize(
@@ -23,18 +28,18 @@ def _rms(samples):
         {"target_rms": 1.0, "initial_gain": 0.0},
     ],
 )
-def test_bad_parameters_are_rejected(kwargs):
+def test_bad_parameters_are_rejected(kwargs: dict[str, float]) -> None:
     with pytest.raises(ValueError):
         agc.AutomaticGainControl(**kwargs)
 
 
-def test_an_empty_batch_changes_nothing():
+def test_an_empty_batch_changes_nothing() -> None:
     gain = agc.AutomaticGainControl(target_rms=0.5, initial_gain=2.0)
     assert gain(np.array([])).size == 0
     assert gain.get_current_gain() == 2.0
 
 
-def test_input_already_at_target_keeps_the_gain():
+def test_input_already_at_target_keeps_the_gain() -> None:
     # The power estimate starts where initial_gain would put the output on
     # target, so input at that level is a fixed point.
     gain = agc.AutomaticGainControl(target_rms=0.5, initial_gain=2.0)
@@ -44,14 +49,14 @@ def test_input_already_at_target_keeps_the_gain():
     assert _rms(out) == pytest.approx(0.5)
 
 
-def test_no_smoothing_corrects_in_one_batch():
+def test_no_smoothing_corrects_in_one_batch() -> None:
     gain = agc.AutomaticGainControl(target_rms=0.5, smoothing_factor=1.0)
     out = gain(_tone(0.1))
     assert gain.get_current_gain() == pytest.approx(5.0)
     assert _rms(out) == pytest.approx(0.5)
 
 
-def test_full_smoothing_never_changes_the_gain():
+def test_full_smoothing_never_changes_the_gain() -> None:
     gain = agc.AutomaticGainControl(
         target_rms=0.5, smoothing_factor=0.0, initial_gain=3.0
     )
@@ -61,14 +66,14 @@ def test_full_smoothing_never_changes_the_gain():
     assert _rms(out) == pytest.approx(0.3)
 
 
-def test_steady_input_converges_to_target():
+def test_steady_input_converges_to_target() -> None:
     gain = agc.AutomaticGainControl(target_rms=0.5, smoothing_factor=0.2)
     for _ in range(200):
         out = gain(_tone(0.05))
     assert _rms(out) == pytest.approx(0.5, rel=1e-3)
 
 
-def test_int16_input_gets_the_same_gain_as_float():
+def test_int16_input_gets_the_same_gain_as_float() -> None:
     # RMS 707 counts: each square is about 1e6, far past int16's 32767.
     as_float = agc.AutomaticGainControl(target_rms=0.5, smoothing_factor=1.0)
     as_float(_tone(707.0))

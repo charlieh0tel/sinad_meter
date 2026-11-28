@@ -6,12 +6,17 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 SENSITIVITY_SINAD_DB = 12.0
 
 
-def sensitivity_dBm(power_dBm, sinad_dB, target_dB=SENSITIVITY_SINAD_DB):
+def sensitivity_dBm(
+    power_dBm: npt.ArrayLike,
+    sinad_dB: npt.ArrayLike,
+    target_dB: float = SENSITIVITY_SINAD_DB,
+) -> float:
     """
     Finds the power at which a sweep reaches a SINAD, by interpolation.
 
@@ -31,18 +36,16 @@ def sensitivity_dBm(power_dBm, sinad_dB, target_dB=SENSITIVITY_SINAD_DB):
         ValueError: if the sweep never rises through target_dB
     """
     order = np.argsort(power_dBm)
-    power_dBm = np.asarray(power_dBm, dtype=float)[order]
-    sinad_dB = np.asarray(sinad_dB, dtype=float)[order]
-    crossings = np.flatnonzero(
-        (sinad_dB[:-1] < target_dB) & (sinad_dB[1:] >= target_dB)
-    )
+    powers = np.asarray(power_dBm, dtype=float)[order]
+    sinads = np.asarray(sinad_dB, dtype=float)[order]
+    crossings = np.flatnonzero((sinads[:-1] < target_dB) & (sinads[1:] >= target_dB))
     if crossings.size == 0:
         raise ValueError(f"the sweep never rises through {target_dB} dB SINAD")
     i = crossings[0]
-    return float(np.interp(target_dB, sinad_dB[i : i + 2], power_dBm[i : i + 2]))
+    return float(np.interp(target_dB, sinads[i : i + 2], powers[i : i + 2]))
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Plots a SINAD sweep.")
     parser.add_argument("csv", type=Path, help="sweep CSV to plot")
     parser.add_argument(

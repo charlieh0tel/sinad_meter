@@ -2,12 +2,16 @@
 # Analog Discovery 3 audio source.
 #
 
+import argparse
+
 import numpy as np
+import numpy.typing as npt
 from pydwf import (
     DwfAcquisitionMode,
     DwfAnalogInFilter,
     DwfAnalogOutFunction,
     DwfAnalogOutNode,
+    DwfDevice,
     DwfEnumConfigInfo,
     DwfLibrary,
     DwfState,
@@ -25,15 +29,15 @@ class DigilentSource(source.Source):
     continuous: bool = False
 
     @staticmethod
-    def default_sample_frequency():
+    def default_sample_frequency() -> float:
         return 16.0e3
 
     @staticmethod
-    def default_record_length():
+    def default_record_length() -> float:
         return 200e-3
 
     @staticmethod
-    def augment_argparse(parser):
+    def augment_argparse(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "-sn",
             "--serial-number-filter",
@@ -52,7 +56,7 @@ class DigilentSource(source.Source):
             help="enable ch1 output",
         )
 
-    def __init__(self, args):
+    def __init__(self, args: argparse.Namespace) -> None:
         self._num_samples = round(args.sample_frequency * args.record_length)
         self._dwf = DwfLibrary()
         self._device = openDwfDevice(
@@ -72,11 +76,11 @@ class DigilentSource(source.Source):
                 self._device, 0, frequency=100, amplitude=1.0, offset=0.0, symmetry=0.25
             )
 
-    def close(self):
+    def close(self) -> None:
         self._device.close()
 
-    def read(self):
-        samples = []
+    def read(self) -> npt.NDArray[np.float64]:
+        chunks: list[npt.NDArray[np.float64]] = []
         total_samples_lost = 0
         total_samples_corrupted = 0
         self._device.analogIn.configure(False, True)
@@ -95,7 +99,7 @@ class DigilentSource(source.Source):
                 current_samples = self._analog_in.statusData(
                     0, current_samples_available
                 )
-                samples.append(current_samples)
+                chunks.append(current_samples)
 
             if status == DwfState.Done:
                 break
@@ -108,7 +112,7 @@ class DigilentSource(source.Source):
                 "samples in acquisition"
             )
 
-        samples = np.concatenate(samples)
+        samples = np.concatenate(chunks)
         if len(samples) > self._num_samples:
             discard_count = len(samples) - self._num_samples
             # print(f"discarding oldest {discard_count} samples out of {len(samples)}")
@@ -116,16 +120,21 @@ class DigilentSource(source.Source):
 
         return samples
 
-    def sample_range(self):
+    def sample_range(self) -> tuple[float, float]:
         return (-2.0, 2.0)
 
-    def sample_unit(self):
+    def sample_unit(self) -> str:
         return "V"
 
 
 def _configure_analog_output(
-    device, channel, frequency, amplitude, offset, symmetry=None
-):
+    device: DwfDevice,
+    channel: int,
+    frequency: float,
+    amplitude: float,
+    offset: float,
+    symmetry: float | None = None,
+) -> None:
     analog_out = device.analogOut
     analog_out.reset(-1)  # Reset both channels.
 

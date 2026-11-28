@@ -5,8 +5,11 @@
 import argparse
 import sys
 import threading
+from collections.abc import Sequence
+from typing import Any, TextIO
 
 import numpy as np
+import numpy.typing as npt
 
 import source
 
@@ -23,7 +26,7 @@ except Exception as e:
     raise source.UnusableBackendError(f"PortAudio could not start: {e}") from e
 
 
-def _int_or_str(text):
+def _int_or_str(text: str) -> int | str:
     # sounddevice selects a device by integer index or by a substring of
     # its name, so a bare number is an index and anything else is a name.
     try:
@@ -32,7 +35,7 @@ def _int_or_str(text):
         return text
 
 
-def _print_input_devices(file):
+def _print_input_devices(file: TextIO) -> None:
     for d in sounddevice.query_devices():
         if not d["max_input_channels"]:
             continue
@@ -46,12 +49,18 @@ class _ListDevicesAction(argparse.Action):
     # Lists devices and exits, like argparse's own --help. Because the
     # action runs as the option is consumed, it exits before argparse
     # enforces the required -d, so --list-devices needs no device.
-    def __init__(self, option_strings, dest, **kwargs):
+    def __init__(self, option_strings: Sequence[str], dest: str, **kwargs: Any) -> None:
         super().__init__(
             option_strings, dest, nargs=0, default=argparse.SUPPRESS, **kwargs
         )
 
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
         _print_input_devices(sys.stdout)
         parser.exit()
 
@@ -66,15 +75,15 @@ class PortAudioSource(source.Source):
     continuous: bool = False
 
     @staticmethod
-    def default_sample_frequency():
+    def default_sample_frequency() -> float:
         return 48_000
 
     @staticmethod
-    def default_record_length():
+    def default_record_length() -> float:
         return 250e-3
 
     @staticmethod
-    def augment_argparse(parser):
+    def augment_argparse(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "-d",
             "--device",
@@ -89,13 +98,13 @@ class PortAudioSource(source.Source):
             help="list available input devices and exit",
         )
 
-    def __init__(self, args):
+    def __init__(self, args: argparse.Namespace) -> None:
         self._num_samples = round(args.sample_frequency * args.record_length)
         self._channel = 0
         # Guards _blocks / _available and signals read() when a fresh
         # window has accumulated.
         self._cond = threading.Condition()
-        self._blocks = []
+        self._blocks: list[npt.NDArray[np.float32]] = []
         self._available = 0
         self._overflowed = False
         try:
@@ -117,7 +126,13 @@ class PortAudioSource(source.Source):
             _print_input_devices(sys.stderr)
             raise
 
-    def _callback(self, indata, _frames, _time, status):
+    def _callback(
+        self,
+        indata: npt.NDArray[np.float32],
+        _frames: int,
+        _time: object,
+        status: sounddevice.CallbackFlags,
+    ) -> None:
         # Runs on PortAudio's thread; indata is reused after we return, so
         # copy the channel we keep.
         with self._cond:
@@ -127,16 +142,16 @@ class PortAudioSource(source.Source):
             self._available += len(indata)
             self._cond.notify()
 
-    def start(self):
+    def start(self) -> None:
         self._stream.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._stream.stop()
 
-    def close(self):
+    def close(self) -> None:
         self._stream.close()
 
-    def read(self):
+    def read(self) -> npt.NDArray[np.float32]:
         with self._cond:
             self._cond.wait_for(lambda: self._available >= self._num_samples)
             samples = np.concatenate(self._blocks)
@@ -156,10 +171,10 @@ class PortAudioSource(source.Source):
         # discarded to stay live.
         return samples[-self._num_samples :]
 
-    def sample_range(self):
+    def sample_range(self) -> tuple[float, float]:
         return (-1.0, 1.0)
 
-    def sample_unit(self):
+    def sample_unit(self) -> str:
         return "AU"
 
 

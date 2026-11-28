@@ -6,6 +6,7 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.style as mplstyle
 import numpy as np
+from matplotlib.figure import Figure
 
 import filters
 import sinad as sinad_pkg
@@ -18,15 +19,18 @@ mplstyle.use("fast")
 
 
 def run(
-    source, sample_frequency, record_length, lpf_cutoff, hpf_cutoff, tone_frequency
-):
+    source: source_pkg.Source,
+    sample_frequency: float,
+    record_length: float,
+    lpf_cutoff: float | None,
+    hpf_cutoff: float | None,
+    tone_frequency: float | None,
+) -> None:
     num_samples = round(sample_frequency * record_length)
 
     acquisition_nr = 0
-    fig = None
-    ch1_line = None
-    sinad_line = None
-    sinad_text = None
+    # The plot's artists are created along with fig, on the first pass.
+    fig: Figure | None = None
     first_time = True
     sinad_filter = filters.make_moving_average_filter(32)
 
@@ -100,7 +104,7 @@ def run(
             break
 
 
-def main():
+def main() -> None:
     registry = source_pkg.load_sources()
     for line in source_pkg.describe_unavailable_backends():
         print(f"note: {line}", file=sys.stderr)

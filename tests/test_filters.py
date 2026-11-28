@@ -1,4 +1,7 @@
+from collections.abc import Sequence
+
 import numpy as np
+import numpy.typing as npt
 import pytest
 import scipy.signal
 
@@ -9,14 +12,30 @@ HPF_CUTOFF = 200.0
 LPF_CUTOFF = 4000.0
 
 
-def _response_dB(audio_filter, frequencies, sample_frequency):
+def _make_filter(
+    sample_frequency: float,
+    hpf_cutoff: float | None = HPF_CUTOFF,
+    lpf_cutoff: float | None = LPF_CUTOFF,
+) -> filters.FirFilter:
+    """make_audio_filter, for cutoffs that imply a filter."""
+    audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
+    assert audio_filter is not None
+    return audio_filter
+
+
+def _response_dB(
+    audio_filter: filters.FirFilter,
+    frequencies: Sequence[float],
+    sample_frequency: float,
+) -> npt.NDArray[np.float64]:
     (_, h) = scipy.signal.freqz(
         audio_filter._taps, worN=frequencies, fs=sample_frequency
     )
-    return 20 * np.log10(np.abs(h))
+    response: npt.NDArray[np.float64] = 20 * np.log10(np.abs(h))
+    return response
 
 
-def _noise_bandwidth(audio_filter, sample_frequency):
+def _noise_bandwidth(audio_filter: filters.FirFilter, sample_frequency: float) -> float:
     """
     The white-noise equivalent bandwidth (Hz), against the passband peak.
 
@@ -26,7 +45,7 @@ def _noise_bandwidth(audio_filter, sample_frequency):
     taps = audio_filter._taps
     (_, h) = scipy.signal.freqz(taps, worN=1 << 16, fs=sample_frequency)
     peak_power = np.max(np.abs(h) ** 2)
-    return np.sum(taps**2) * sample_frequency / 2 / peak_power
+    return float(np.sum(taps**2) * sample_frequency / 2 / peak_power)
 
 
 @pytest.mark.parametrize(
@@ -37,9 +56,11 @@ def _noise_bandwidth(audio_filter, sample_frequency):
         (HPF_CUTOFF, None, "highpass"),
     ],
 )
-def test_audio_filter_is_the_one_its_cutoffs_imply(hpf_cutoff, lpf_cutoff, kind):
+def test_audio_filter_is_the_one_its_cutoffs_imply(
+    hpf_cutoff: float | None, lpf_cutoff: float | None, kind: str
+) -> None:
     sample_frequency = 48_000
-    audio_filter = filters.make_audio_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
+    audio_filter = _make_filter(sample_frequency, hpf_cutoff, lpf_cutoff)
     (low, mid, high) = _response_dB(
         audio_filter, [20.0, 1000.0, 20_000.0], sample_frequency
     )
@@ -53,32 +74,32 @@ def test_audio_filter_is_the_one_its_cutoffs_imply(hpf_cutoff, lpf_cutoff, kind)
     }[kind]
 
 
-def test_no_cutoffs_is_no_filter():
+def test_no_cutoffs_is_no_filter() -> None:
     assert filters.make_audio_filter(48_000, None, None) is None
 
 
-def test_crossed_cutoffs_are_rejected():
+def test_crossed_cutoffs_are_rejected() -> None:
     with pytest.raises(ValueError, match="must be below"):
         filters.make_audio_filter(48_000, LPF_CUTOFF, HPF_CUTOFF)
 
 
-def test_filtering_in_pieces_matches_filtering_at_once():
+def test_filtering_in_pieces_matches_filtering_at_once() -> None:
     """Continuous sources rely on the delay line carrying across reads."""
     samples = np.random.default_rng(0).standard_normal(10_000)
-    whole = filters.make_audio_filter(48_000, HPF_CUTOFF, LPF_CUTOFF)(samples)
-    pieces = filters.make_audio_filter(48_000, HPF_CUTOFF, LPF_CUTOFF)
+    whole = _make_filter(48_000)(samples)
+    pieces = _make_filter(48_000)
     joined = np.concatenate([pieces(chunk) for chunk in np.array_split(samples, 7)])
     np.testing.assert_allclose(joined, whole)
 
 
-def test_reset_forgets_the_previous_record():
+def test_reset_forgets_the_previous_record() -> None:
     """Record-based sources reset between reads, so no record sees another's tail."""
     rng = np.random.default_rng(1)
     (first, second) = (rng.standard_normal(1000), rng.standard_normal(1000))
-    audio_filter = filters.make_audio_filter(48_000, HPF_CUTOFF, LPF_CUTOFF)
+    audio_filter = _make_filter(48_000)
     audio_filter(first)
     audio_filter.reset()
-    fresh = filters.make_audio_filter(48_000, HPF_CUTOFF, LPF_CUTOFF)
+    fresh = _make_filter(48_000)
     np.testing.assert_allclose(audio_filter(second), fresh(second))
 
 
@@ -90,9 +111,9 @@ def test_reset_forgets_the_previous_record():
 #
 
 
-def test_band_edges_are_where_todo_says():
+def test_band_edges_are_where_todo_says() -> None:
     (at_hpf, at_lpf) = _response_dB(
-        filters.make_audio_filter(48_000, HPF_CUTOFF, LPF_CUTOFF),
+        _make_filter(48_000),
         [HPF_CUTOFF, LPF_CUTOFF],
         48_000,
     )
@@ -103,8 +124,10 @@ def test_band_edges_are_where_todo_says():
 @pytest.mark.parametrize(
     ("sample_frequency", "expected_Hz"), [(48_000, 3457), (16_000, 3662)]
 )
-def test_noise_bandwidth_is_what_todo_says(sample_frequency, expected_Hz):
-    audio_filter = filters.make_audio_filter(sample_frequency, HPF_CUTOFF, LPF_CUTOFF)
+def test_noise_bandwidth_is_what_todo_says(
+    sample_frequency: float, expected_Hz: float
+) -> None:
+    audio_filter = _make_filter(sample_frequency)
     assert _noise_bandwidth(audio_filter, sample_frequency) == pytest.approx(
         expected_Hz, abs=1
     )
