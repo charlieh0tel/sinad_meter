@@ -15,4 +15,4 @@
 - When starting a large change, refactor and commit first.
 - Do not add Claude attribution to commit or PR bodies.
 - Use typing and mypy (strict).
-
+- Never git commit/add -a/-A.  Specify the files.

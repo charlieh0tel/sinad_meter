@@ -10,6 +10,7 @@ import pathlib
 
 import pytest
 
+import siggen
 import source
 
 ROOT = pathlib.Path(__file__).parent.parent
@@ -20,7 +21,8 @@ ROOT = pathlib.Path(__file__).parent.parent
 MODULES = sorted(
     p.stem
     for p in ROOT.glob("*.py")
-    if p.stem not in source.BACKEND_MODULES and not p.stem.startswith("_")
+    if p.stem not in source.BACKEND_MODULES + siggen.BACKEND_MODULES
+    and not p.stem.startswith("_")
 )
 
 
@@ -47,4 +49,13 @@ def test_every_backend_loads() -> None:
     # as not checked rather than as passing.
     if unusable:
         pytest.skip("; ".join(f"{name}: {e}" for name, e in sorted(unusable.items())))
+    assert [s.name for s in registry]
+
+
+def test_every_siggen_backend_loads() -> None:
+    registry = siggen.load_siggens()
+    # Installed plugins load too, but a broken one is not this repo's
+    # failure; test_siggen_plugins covers plugin loading.
+    failed = set(siggen.BACKEND_MODULES) & set(siggen.UNAVAILABLE_BACKENDS)
+    assert not failed, siggen.describe_unavailable_backends()
     assert [s.name for s in registry]

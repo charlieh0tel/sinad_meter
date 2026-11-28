@@ -24,9 +24,52 @@ Note that the plotting script annotates the graph with the standard
 
 ## Synthesizer Control
 
-If you have an HP8663A (or probably HP866[23][AB]) or an R&S SMB100A,
-the program can automatically do a SINAD sweep.  This is how the
-graphs above were created.
+If you have an HP 8663A or an R&S SMB100A, the program can
+automatically do a SINAD sweep.  This is how the graphs above were
+created.  Other HP 8662/8663 models probably work with
+`-G hp8663a --modulation-from-front-panel`, kept within their own
+frequency range: the FM codes and frequency limits are the 8663A's.
+
+The sweep sets the carrier (`--frequency`, required) and, where the
+generator supports it, the TIA-603 test modulation: 1 kHz FM at 3 kHz
+deviation by default (`--mod-rate`, `--deviation`; use 1500 Hz for
+12.5 kHz channels).  `--modulation-from-front-panel` leaves modulation
+as set by hand instead.  The CSV records which was used.  FM on the
+HP 8663A follows its manual but has not yet been tried on an
+instrument.
+
+### Adding a signal generator
+
+A signal generator is a plain class; it does not import anything from
+here.  [`examples/print_siggen.py`](examples/print_siggen.py) is a
+complete one that drives no hardware, and the members required are
+listed in [`siggen.py`](siggen.py).  There are two ways to use one
+without changing this repository.
+
+For a single file:
+
+```
+uv run ./auto_sinad.py --siggen-plugin my_siggen.py:MySigGen -G mysiggen ...
+```
+
+For a package, declare an entry point in its `pyproject.toml`:
+
+```toml
+[project.entry-points."sinad_meter.siggens"]
+mysiggen = "my_siggens.mysiggen:MySigGen"
+```
+
+and run with it installed for that run only:
+
+```
+uv run --with ../my-siggens ./auto_sinad.py -G mysiggen ...
+```
+
+An installed plugin that fails to load, lacks a required member, or
+takes the name of a built-in generator is reported with a `note:` and
+skipped, so the other generators stay usable.  The same problems with a
+`--siggen-plugin` file stop the program with an error, since that file
+was asked for by name.
 
 ## Receiver Audio Acquisition
 
