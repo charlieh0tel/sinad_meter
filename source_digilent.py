@@ -122,14 +122,6 @@ class DigilentSource(source.Source):
     def sample_unit(self):
         return "V"
 
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *_args):
-        self.stop()
-        self.close()
-
 
 def _configure_analog_output(
     device, channel, frequency, amplitude, offset, symmetry=None
