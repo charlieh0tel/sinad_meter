@@ -28,7 +28,7 @@ repos:
       # it takes no filenames and runs whenever any Python file changes.
       - id: mypy
         name: mypy
-        entry: uv run --frozen mypy
+        entry: uv run --frozen mypy --strict
         language: system
         types_or: [python, pyi]
         pass_filenames: false
