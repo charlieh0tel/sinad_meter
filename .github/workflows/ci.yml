@@ -44,4 +44,6 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
-      - run: uv run --frozen mypy
+      # --strict on the command line as well as in pyproject.toml, so that
+      # dropping it from the config cannot quietly weaken the check.
+      - run: uv run --frozen mypy --strict
