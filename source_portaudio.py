@@ -162,13 +162,5 @@ class PortAudioSource(source.Source):
     def sample_unit(self):
         return "AU"
 
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *_args):
-        self.stop()
-        self.close()
-
 
 source.SOURCE_REGISTRY.register(PortAudioSource)
